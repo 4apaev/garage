@@ -1,0 +1,267 @@
+env:
+    node: true
+    es2022: true
+
+parserOptions:
+    sourceType: module
+    ecmaVersion: latest
+
+globals:
+    it: readonly
+    describe: readonly
+    toString: readonly
+    hasOwnProperty: readonly
+
+extends:
+    - eslint:recommended
+
+rules:
+    no-cond-assign: off
+    class-methods-use-this: off
+    no-unused-vars:
+        - off
+        - args: after-used
+          caughtErrors: none
+          argsIgnorePattern: ^_
+          varsIgnorePattern: ^_
+
+    semi: [ error, never ]
+    new-parens: [ error, never ]
+
+    no-var: warn
+    no-debugger: error
+    no-lonely-if: error
+    no-else-return: error
+    no-return-await: error
+    no-extra-label: error
+    no-extra-bind: error
+
+    no-useless-call: error
+    no-useless-catch: error
+    no-useless-concat: error
+    no-useless-constructor: error
+    no-useless-computed-key: error
+    no-unused-private-class-members: error
+    no-constant-binary-expression: error
+    no-unneeded-ternary: error
+    no-unreachable-loop: error
+    no-useless-rename: error
+
+    no-empty:
+        - error
+        - allowEmptyCatch: true
+
+    no-extra-boolean-cast:
+        - error
+        - enforceForLogicalOperands: true
+
+    # ◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢
+
+    block-scoped-var: error
+    func-name-matching: error
+
+    # ◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢
+
+    comma-style       : [ error, last ]
+    comma-dangle      : [ error, always-multiline ]
+    multiline-ternary : [ error, always-multiline ]
+    arrow-body-style  : [ error, as-needed ]
+    arrow-parens      : [ error, as-needed ]
+    quote-props       : [ error, as-needed ]
+
+    eol-last: [ error, always ]
+    curly   : [ error, multi-or-nest, consistent ]
+
+    object-shorthand:
+        - error
+        - always
+        - avoidExplicitReturnArrows: true
+
+    require-atomic-updates:
+        - error
+        - allowProperties: true
+
+    one-var:
+        - error
+        - uninitialized: always
+
+    camelcase:
+        - error
+        - properties: never
+
+    quotes:
+        - error
+        - single
+        - allowTemplateLiterals: true
+
+    brace-style:
+        - error
+        - stroustrup
+        - allowSingleLine: true
+
+    getter-return:
+        - error
+        - allowImplicit: true
+
+    space-infix-ops:
+        - error
+        - int32Hint: true
+
+    lines-between-class-members:
+        - error
+        - always
+        - exceptAfterSingleLine: true
+
+    prefer-arrow-callback:
+        - error
+        - allowUnboundThis: false
+          allowNamedFunctions: true
+
+    sort-imports:
+        - error
+        - ignoreCase: false
+          ignoreMemberSort: true
+          ignoreDeclarationSort: true
+          allowSeparatedGroups: true
+          memberSyntaxSortOrder: [none, single, all, multiple]
+
+    # ◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢
+
+    block-spacing: error
+    space-in-parens: error
+    func-call-spacing: error
+    template-curly-spacing: [ error, always ]
+    computed-property-spacing:
+        - error
+        - always
+        - enforceForClassMembers: true
+
+    comma-spacing:
+        - error
+        - after: true
+          before: false
+
+    space-before-function-paren:
+        - error
+        - named: never
+          anonymous: always
+          asyncArrow: always
+
+    object-curly-spacing:
+        - error
+        - always
+        - arraysInObjects: false
+          objectsInObjects: false
+
+    array-bracket-spacing:
+        - error
+        - always
+        - arraysInArrays: false
+          objectsInArrays: false
+
+    key-spacing:
+        - error
+        - afterColon: true
+          beforeColon: false
+
+    keyword-spacing:
+        - error
+        - after: true
+          before: true
+          overrides:
+              return:
+                  after: true
+              throw:
+                  after: true
+              case:
+                  after: true
+
+    # ◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢
+
+    no-multiple-empty-lines:
+        - error
+        - max: 1
+          maxEOF: 0
+          maxBOF: 0
+
+    #    code                     (default 80) enforces a maximum line length
+    #    tabWidth                 (default 4) specifies the character width for tab characters
+    #    comments                 enforces a maximum line length for comments; defaults to value of code
+    #    ignorePattern            ignores lines matching a regular expression; can only match a single line and need to be double escaped when written in YAML or JSON
+    #    ignoreComments          : true ignores all trailing comments and comments on their own line
+    #    ignoreTrailingComments  : true ignores only trailing comments
+    #    ignoreUrls              : true ignores lines that contain a URL
+    #    ignoreStrings           : true ignores lines that contain a double-quoted or single-quoted string
+    #    ignoreTemplateLiterals  : true ignores lines that contain a template literal
+    #    ignoreRegExpLiterals    : true ignores lines that contain a RegExp literal
+
+    max-len:
+        - error
+        - 128
+        - 2
+        - ignoreUrls: true
+          ignoreComments: true
+          ignoreRegExpLiterals: true
+          ignoreTrailingComments: true
+          ignoreTemplateLiterals: false
+          ignoreStrings: false
+        #   ignorePattern: '[a-z]'
+
+    max-lines:
+        - off
+        -
+            max: 256
+            skipComments: true
+
+    max-lines-per-function:
+        - error
+        - max: 64
+          IIFEs: true
+          skipComments: true
+          skipBlankLines: true
+
+    max-depth: [ error, 4 ]
+    max-params: [ error, 4 ]
+    max-statements: [ off, 10 ]
+    max-nested-callbacks: [ off, 2 ]
+    max-statements-per-line:
+        - off
+        - max: 2
+
+    # ◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢
+
+    indent:
+        - error
+        - 4
+        - SwitchCase: 1
+          outerIIFEBody: 1
+          StaticBlock:
+              body: 2
+
+          ArrayExpression: 1
+          ObjectExpression: 1
+          MemberExpression: 1
+          ImportDeclaration: 1
+          VariableDeclarator:
+              const: 2
+              var: 2
+              let: 1
+
+          CallExpression:
+              arguments: 1
+
+          FunctionDeclaration:
+              parameters: 2
+              body: 1
+
+          FunctionExpression:
+              parameters: 2
+              body: 1
+
+          offsetTernaryExpressions: false
+          flatTernaryExpressions: true
+          ignoreComments: true
+
+
+# ◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢
+# ◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥◣◥
