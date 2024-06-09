@@ -1,0 +1,19 @@
+{
+    "name"       : "gw-user-service",
+    "author"     : "Michael Miretsky",
+    "version"    : "0.0.1",
+    "license"    : "MIT",
+    "type"       : "module",
+    "main"       : "index.js",
+    "repository" : "github:4apaev/gw-user-service",
+    "scripts"    : {
+        "start": "node --env-file=./.env  index.js",
+        "serve": "node --env-file=./.env  index.js 2>&1 > out.log &",
+        "watch": "node --env-file=./.env  --watch-path=./src index.js ",
+        "test": "node --env-file=./.env  --experimental-test-coverage test/*.spec.js"
+    },
+    "devDependencies": {
+        "@types/node": "^20.14.2",
+        "eslint": "^9.4.0"
+    }
+}

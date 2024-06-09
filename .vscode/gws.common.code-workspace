@@ -1,0 +1,14 @@
+{
+    "folders": [
+        {
+            "path": "..",
+            "name": "🛟 common",
+        }
+    ],
+    "settings": {
+        "explorer.fileNesting.enabled": true,
+        "explorer.fileNesting.patterns": {
+            "package.json": ".env*, .git*, .editor*, *rc, *.json, .*.yml, *.md, *.config.js"
+        },
+    }
+}

@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "baseUrl"                          : "./src",
+    "outDir"                           : "./dist",
+    "target"                           : "esnext",
+    "module"                           : "nodenext",
+    "moduleResolution"                 : "nodenext",
+    "downlevelIteration"               : true,
+    "forceConsistentCasingInFileNames" : true,
+    "esModuleInterop"                  : true,
+    "declaration"                      : true,
+    "allowJs"                          : true,
+    "pretty"                           : true,
+    "strict"                           : false,
+  },
+
+  "include": [
+    "./src",
+    "./test",
+    "./crap.js",
+    "./index.js",
+  ],
+
+  "exclude": [
+    "./scripts"
+  ]
+}
