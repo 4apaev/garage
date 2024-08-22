@@ -1,12 +1,12 @@
 import js from '@eslint/js'
-import rules from './eslint.rules.config.js'
+import rules, { rename } from './eslint.rules.config.js'
 
 
 export default [
     {
         rules: {
             ...js.configs.recommended.rules,
-            ...rules,
+            ...rename(rules, '_', '-'),
         },
 
         files: [
@@ -28,6 +28,7 @@ export default [
                 console    : 'readonly',
                 process    : 'readonly',
                 setTimeout : 'readonly',
+                setInterval: 'readonly',
                 Buffer     : 'readonly',
             },
         },

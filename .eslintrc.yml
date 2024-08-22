@@ -46,7 +46,9 @@ rules:
     no-unneeded-ternary: error
     no-unreachable-loop: error
     no-useless-rename: error
-
+    # no_duplicate_case: error
+    # no_dupe_args: error
+    # no_dupe_keys: error
     no-empty:
         - error
         - allowEmptyCatch: true

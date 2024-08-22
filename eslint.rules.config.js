@@ -1,5 +1,5 @@
 
-const rules = {
+export const rules = {
 /* * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *
   * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *
    * * * *               * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *
@@ -51,6 +51,9 @@ const rules = {
     no_unneeded_ternary             :   2,
     no_unreachable_loop             :   2,
     no_useless_rename               :   2,
+    no_dupe_args                    :   2,
+    no_dupe_keys                    :   2,
+    no_duplicate_case               :   2,
 
 
 /* * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *    * * * *
@@ -169,7 +172,7 @@ const rules = {
     }],
 }
 
-function rename(ctx, a, b) {
+export function rename(ctx, a, b) {
     const mv = typeof a == 'function'
         ? a
         : k => k.replaceAll(a, b)
@@ -180,4 +183,4 @@ function rename(ctx, a, b) {
     }, {})
 }
 
-export default rename(rules, '_', '-')
+export default rules
