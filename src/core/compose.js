@@ -1,9 +1,8 @@
 import Fail from '../util/fail.js'
 
 export default function compose(args) {
-    // const args = Array.from(arguments).flat()
 
-    return function handler(argv) {
+    return function handler(...a) {
         let prev = -1
 
         const emit = i => {
@@ -14,7 +13,7 @@ export default function compose(args) {
 
             try {
                 return Promise.resolve(cb
-                    ? cb.apply(this, argv.concat(() => emit(i + 1)))
+                    ? cb.apply(this, a.concat(() => emit(i + 1)))
                     : this)
             }
             catch (cause) {
