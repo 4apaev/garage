@@ -16,13 +16,9 @@ export default class App {
     post(...a) { this.use('POST', ...a)  }
 
     upgrade(rq, soc, head) {
-        soc.write(
-            `HTTP/1.1 101 Web Socket Protocol Handshake
-                Connection: Upgrade
-                Upgrade: WebSocket
-
-            `.replace(/ *\r?\n */g, '\r\n'),
-        )
+        soc.write('HTTP/1.1 101 Web Socket Protocol Handshake\r\n')
+        soc.write('upgrade: WebSocket\r\n')
+        soc.write('connection: Upgrade\r\n')
         soc.pipe(soc) // echo back
     }
 
@@ -39,53 +35,3 @@ export default class App {
         server.on('upgrade', this.upgrade)
     }
 }
-
-console.clear()
-
-const { raw } = String
-
-function test(t, s) {
-
-    process.stdout.write(test.tmpl
-        .replace('%s', t)
-        .replace('%s', s))
-    process.stdout.write('\n================================================\n')
-
-    console.log(test.tmpl, 'head', s)
-
-    console.log(test.tmpl, 'split', s.split(/\r\n/g))
-    console.log(test.tmpl, 'match', s.match(/\r\n/g))
-}
-
-test.w = (s, ...a) => {
-    '\n================================================\n'
-}
-test.div = '\n================================================\n'
-
-test.tmpl = `
-[[[[[[[---------------- %s ----------------]]]]]]]
-................................................
-%s
-................................................
-`
-
-const H = {
-    http: raw`HTTP/1.1 101 Web Socket Protocol Handshake`,
-    conn: `Connection: Upgrade`,
-    up: `Upgrade: WebSocket`,
-}
-
-test('trim + repl', raw`
-    ${ H.http }
-    ${ H.conn }
-    ${ H.up }
-
-`.trimStart().replace(/ *\r?\n */g, '|\r\n|'))
-
-test('array + join', [
-    H.http,
-    H.conn,
-    H.up,
-    '',
-    '',
-].join('\r\n'))
