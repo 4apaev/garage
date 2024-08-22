@@ -14,14 +14,8 @@
     "strict"                           : false,
   },
 
-  "include": [
-    "./src",
-    "./test",
-    "./crap.js",
-    "./index.js",
-  ],
 
-  "exclude": [
-    "./scripts"
-  ]
+
+  "include": [ "./src" ],
+  // "exclude": [ "./scripts" ]
 }
