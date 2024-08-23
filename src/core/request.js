@@ -1,20 +1,12 @@
 // @ts-check
 
-import Util from 'node:util'
-import { EventEmitter } from 'node:events'
-import { HEADER } from '../constants.js'
-import QURL from '../util/qurl.js'
-import Fail from '../util/fail.js'
+import { EventEmitter   } from 'node:events'
+import { HEADER, STATUS } from '../util/constants.js'
+
 import O from '../util/use.js'
-
-const INSPECT = Symbol.for('nodejs.util.inspect.custom')
-const PROMISIFY = Symbol.for('nodejs.util.promisify.custom')
-const TOS = Symbol.toStringTag
-const AIT = Symbol.asyncIterator
-const  IT = Symbol.iterator
-
-/** @typedef { import('core.js').IRequest } IRequest */
-/** @typedef { import('core.js').TRequest } TRequest */
+import Qurl from '../util/qurl.js'
+import Fail from '../util/fail.js'
+import * as Mim from '../util/mime.js'
 
 /**
  * @implements {IRequest}
@@ -29,8 +21,15 @@ export default class Req extends EventEmitter {
     constructor(rq) {
         super()
         this.rq = rq
-        this.URL = new QURL(rq.url, 'file:')
+        this.URL = new Qurl(rq.url, 'file:')
     }
+
+    // has(k) {
+    //     throw new Error('Method not implemented.')
+    // }
+    // get(k) {
+    //     throw new Error('Method not implemented.')
+    // }
 
     get url()    { return this.rq.url    }
     get method() { return this.rq.method }
@@ -50,69 +49,64 @@ export default class Req extends EventEmitter {
     async *[ Symbol.asyncIterator ]() { yield* this }
     *      [ Symbol.iterator ]() {
         yield [ 'method', this.method ]
-        yield [ 'path', this.path ]
-        yield [ 'query', this.query ]
-        yield [ 'type', this.type ]
-        yield [ 'size', this.size ]
+        yield [ 'path',   this.path   ]
+        yield [ 'query',  this.query  ]
+        yield [ 'type',   this.type   ]
+        yield [ 'size',   this.size   ]
     }
 
-    [ Util.promisify.custom ]() {
-
-    }
+    // [ Symbol.for('nodejs.util.promisify.custom') ]() {}
 
     /**
      * @param  { number } depth
-     * @param  { Util.InspectOptionsStylized } opts
-     * @param  { typeof Util.inspect } inspect
+     * @param  { import('node:util').InspectOptionsStylized } opts
+     * @param  { typeof import('node:util').inspect } inspect
      */
-    [ Util.inspect.custom ](depth, opts, inspect) {
-
-        const req = {
+    [ Symbol.for('nodejs.util.inspect.custom') ](depth, opts, inspect) {
+        const inner = inspect({
             method: this.method,
             path: this.path,
             query: this.query,
             type: this.type,
             size: this.size,
-        }
-
-        const inner = inspect(req, opts).replace(/\n/g, `\n     `) // 5 space padding because that's the size of "Req< "
+        }, opts).replace(/\n/g, `\n     `) // 5 space padding because that's the size of "Req< "
         return `${ opts.stylize('Req', 'special') }< ${ inner } >`
-
-        // return inspect({
-        //     method : this.method,
-        //     url    : this.url,
-        //     query  : this.query,
-        //     path   : this.path,
-        //     size   : this.size,
-        //     type   : this.type,
-        // }, {
-        //     colors: true,
-        //     depth
-        // })
     }
 
-    async read() {
-
-        let body = ''
-        this.rq.setEncoding('utf8')
+    async reader() {
+        let body = []
 
         for await (const chunk of this.rq)
-            body += chunk
+            body.push(chunk)
 
-        let type = this.type ?? ''
+        this.body = Buffer.concat(body)
 
-        if (type.includes('application/json')) {
+        if (Mim.is('json', this.rq.headers)) {
             try {
-                this.body = JSON.parse(body)
+                this.body = JSON.parse(this.body)
             }
             catch (e) {
-                e.code = e.staus = 400
-                O.of
+                e.code = e.staus = STATUS.BAD.REQUEST
                 this.error = Fail.of('invalid payload', e)
             }
         }
-        else {
-            this.body = body
+    }
+
+    async read() {
+        this.body = ''
+        this.rq.setEncoding('utf8')
+
+        for await (const chunk of this.rq)
+            this.body += chunk
+
+        if (Mim.is('json', this.rq.headers)) {
+            try {
+                this.body = JSON.parse(this.body)
+            }
+            catch (e) {
+                e.code = e.staus = STATUS.BAD.REQUEST
+                this.error = Fail.of('invalid payload', e)
+            }
         }
     }
 
@@ -120,12 +114,55 @@ export default class Req extends EventEmitter {
      * @param  { string } k
      * @return { boolean }
      */
-    has(k) { return k in this.rq.headers }
+    has(k) {
+        return k in this.rq.headers
+    }
 
     /**
      * @param  { string } k
      * @return { number | string | string[] | undefined }
      */
-    get(k) { return this.rq.headers[ k ] }
+    get(k) {
+        return this.rq.headers[ k ]
+    }
 
 }
+
+/** @typedef { import('core.js').IRequest } IRequest */
+/** @typedef { import('core.js').TRequest } TRequest */
+
+/*
+cmplx
+prmtv
+
+u
+i
+f
+s
+S
+b
+B
+o
+t
+
+U
+I
+F
+n
+N
+a
+A
+O
+T
+
+u U
+i I
+f F
+s S
+n N
+b B
+a A
+o O
+t T
+
+*/

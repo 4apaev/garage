@@ -1,14 +1,11 @@
 // @ts-check
-
 import compose from './compose.js'
-import path2regex from './path2regex.js'
+import path2regex from '../util/path2regex.js'
 
-const METHODS = new Set('GET,PUT,POST,DELETE,PATCH,OPTIONS,HEAD'.split(','))
-
-/** @typedef { import('core.js').IRequest   } Req       */
-/** @typedef { import('core.js').IResponse  } Res       */
-/** @typedef { import('core.js').Handler   } Handler   */
-/** @typedef { import('core.js').Validator } Validator */
+import { METHOD } from '../util/constants.js'
+import Fail from '../util/fail.js'
+import Is from '../util/is.js'
+import O from '../util/use.js'
 
 export default function use() {
     /** @type { RegExp[] }    */ const paths = []
@@ -17,37 +14,36 @@ export default function use() {
     /** @type { Validator[] } */ const validators = []
 
     for (const a of arguments) {
-        if (typeof a == 'function')
+        if (Is.s(a))
+            a in METHOD ? methods.push(a.toUpperCase()) : paths.push(path2regex(a))
+
+        else if (Is.f(a))
             handlers.push(a)
 
-        else if (typeof a == 'string')
-            isMethod(a) ? methods.push(a.toUpperCase()) : paths.push(path2regex(a))
-
-        else if (a instanceof RegExp)
+        else if (Is(RegExp, a))
             paths.push(a)
 
         else
-            console.error('🔴 unknown type "%s"', toString.call(a))
+            console.error('🔴 unknown type "%s"', Is.T(a))
     }
 
-    if (handlers.length < 1)
-        throw new Error('missing handler')
+    handlers.length || Fail.raise('missing handler', arguments)
 
-    let handler = handlers.length > 1
-        ? compose(handlers)
-        : handlers[ 0 ]
-
+    const handler = /*          */ handlers.length > 1 ? compose(handlers)    : handlers[ 0 ]
+    paths.length   && validators.push(paths.length > 1 ? validatePaths(paths) : validatePath(paths[ 0 ]))
     methods.length && validators.push(validateMethods(methods))
-    paths.length && validators.push(paths.length === 1
-        ? validatePath(paths[ 0 ])
-        : validatePaths(paths))
 
     return routeRequest(handler, validators)
 }
 
+/** @type { UseMethod } */ use.get  = (...a) => use(METHOD.GET, ...a)
+/** @type { UseMethod } */ use.post = (...a) => use(METHOD.POST, ...a)
+/** @type { UseMethod } */ use.put  = (...a) => use(METHOD.PUT, ...a)
+/** @type { UseMethod } */ use.del  = (...a) => use(METHOD.DELETE, ...a)
+
 /**
- * @param { Handler } handler
- * @param { Validator[] } validators
+ * @param  { Handler } handler
+ * @param  { Validator[] } validators
  * @return { Handler }
  */
 function routeRequest(handler, validators) {
@@ -66,7 +62,7 @@ function routeRequest(handler, validators) {
 function validatePath(rx) {
     return rq => {
         const match = rq.url.match(rx)
-        rq.params = match?.groups
+        rq.params = match?.groups ?? O.o
         return match != null
     }
 }
@@ -77,8 +73,9 @@ function validatePath(rx) {
  */
 function validatePaths(paths) {
     return rq => {
+        rq.params ??= O.o
+
         let ok
-        rq.params ??= Object.create(null)
         for (let rx of paths)
             ok ??= matchReqPath(rq, rx)
         return ok
@@ -91,18 +88,13 @@ function validatePaths(paths) {
  * @return { boolean }
  */
 function matchReqPath(rq, rx) {
+    rq.params ??= O.o
+
     const match = rq.url.match(rx)
     if (match == null)
         return false
 
-    if (match.groups) {
-        for (let [ k, v ] of Object.entries(match.groups)) {
-            if (k in rq.params)
-                console.warn('duplicated request parameter %s - old: %s, new: %s', k, rq.params[ k ], v)
-            else
-                rq.params[ k ] = v
-        }
-    }
+    O.assign(rq.params, match.groups)
     return true
 }
 
@@ -115,10 +107,8 @@ function validateMethods(methods) {
 
 }
 
-/**
- * @param  { string } x
- * @return { boolean }
- */
-function isMethod(x) {
-    return METHODS.has(x.toUpperCase())
-}
+/** @typedef { import('core.js').IRequest   } Req       */
+/** @typedef { import('core.js').IResponse  } Res       */
+/** @typedef { import('core.js').Handler    } Handler   */
+/** @typedef { import('core.js').Validator  } Validator */
+/** @typedef { (method: string, path: string | RegExp, handler: Handler) => Handler  } UseMethod */
