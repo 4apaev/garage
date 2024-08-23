@@ -1,12 +1,13 @@
 // @ts-check
 
-import Fs               from 'node:fs'
-import { Stream       } from 'node:stream'
-import { STATUS_CODES } from 'node:http'
-import { EventEmitter } from 'node:events'
-import { MIME, HEADER } from '../constants.js'
-import { fromPath     } from '../util/mime.js'
-import Is               from '../util/is.js'
+import { Stream         } from 'node:stream'
+import { EventEmitter   } from 'node:events'
+import { STATUS_CODES   } from 'node:http'
+import Fs                 from 'node:fs'
+
+import Is                 from '../util/is.js'
+import { HEADER, STATUS } from '../util/constants.js'
+import { MIME, fromPath } from '../util/mime.js'
 
 /**
  * @implements {IResponse}
@@ -103,7 +104,7 @@ export default class Res extends EventEmitter {
      * @return { IResponse }
      */
     end(x) {
-        if (x && this.#written) /* data was written directly to `this.rs` */ {
+        if (x != null && this.#written) /* data was written directly to `this.rs` */ {
             this.rs.end(x)
             return this
         }
@@ -111,8 +112,8 @@ export default class Res extends EventEmitter {
         x ??= this.body
 
         if (x == null
-            || this.status === 204
-            || this.status === 304
+            || this.status === STATUS.NO.CONTENT
+            || this.status === STATUS.NOT.MODIFIED
         ) {
             this.size = 0
             this.rs.end()
@@ -144,10 +145,10 @@ export default class Res extends EventEmitter {
         if (Is.o(status))
             [ status, body ] = [ body, status ]
 
-        if (status in STATUS_CODES)
+        if (Is.N(status))
             this.status = status
         else
-            this.status ??= 200
+            this.status ??= STATUS.OK
 
         this.body = body
         return this.end()
@@ -159,7 +160,7 @@ export default class Res extends EventEmitter {
      */
     json(status, body) {
         if (Is.o(status))
-            [ status, body ] = [ 200, status ]
+            [ status, body ] = [ STATUS.OK, status ]
 
         this.status = status
         this.type = MIME.json
@@ -177,15 +178,15 @@ export default class Res extends EventEmitter {
         return new Promise(ok => {
             Fs.stat(path, (e, s) => {
                 if (e) {
-                    this.status = 404
+                    this.status = STATUS.NOT.FOUND
                     this.size = 0
                     this.rs.end()
                 }
                 else {
-                    this.status = 200
+                    this.status = STATUS.OK
                     this.size = s.size
                     this.type = fromPath(path)
-                    this.set('last-modified', s.mtimeMs)
+                    this.set(HEADER.LAST.MODIFIED, s.mtimeMs)
                     Fs.createReadStream(path).pipe(this.rs)
                 }
                 ok(this)
