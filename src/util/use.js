@@ -11,25 +11,27 @@ export default class O extends Object {
     static defines = this.defineProperties
     static descriptor = this.getOwnPropertyDescriptor
     static descriptors = this.getOwnPropertyDescriptors
+    static group = this.groupBy
     static from = this.fromEntries
+    static pro = (a, b) => b ? this.setPrototypeOf(a, b) : this.getPrototypeOf(a)
+    static set = (a, b) => this.defines(a, this.descriptors(b))
+    static of = (...a) => a.reduce(this.set, this.o)
 
-    static is(x) {
-        return 'object' == typeof x && !!x
-    }
-
-    static cmplx(x) {
-        return x === Object(x)
-    }
-
-    static use() {
+    static use = (...a) => {
         let k, dsc
         let head = [], tail = []
         let cewVal = [], cewGet = [ 'configurable', 'enumerable', 'writable' ]
 
-        for (k of arguments) {
-            this.cmplx(k)
-                ? [ head, tail ][ +!!cewVal.length ].push(k)
-                : cewVal.push([ cewGet[ cewVal.length ], !!k ])
+        for (k of a) {
+            let i = cewVal.length
+            if (k === Object(k)) {
+                i
+                    ? tail.push(k)
+                    : head.push(k)
+            }
+            else {
+                cewVal[ i ] = [ cewGet[ i ], !!k ]
+            }
         }
 
         tail.length || tail.push(head.pop())
@@ -48,6 +50,15 @@ export default class O extends Object {
             this.defines(k, dsc)
 
         return k
+    }
+
+    static each = (it, fx, ctx) => {
+        const BRK = Symbol.for('BREAK')
+        for (let [ k, v ] of it?.entries?.() ?? this.entries(it)) {
+            if (BRK === fx.call(ctx, k, v))
+                break
+        }
+        return ctx
     }
 
     static alias(src, props, ...trg) {
@@ -69,58 +80,7 @@ export default class O extends Object {
         return next
     }
 
-    static of = (...a) => a.reduce(this.set, this.o)
-    static set = (a, b) => this.defines(a, this.descriptors(b))
-
-    static each = (it, fx, ctx) => {
-        const BRK = Symbol.for('BREAK')
-        for (let [ k, v ] of it?.entries?.() ?? this.entries(it)) {
-            if (BRK === fx.call(ctx, k, v))
-                break
-        }
-        return ctx
-    }
-
-    static reduce = (it, fx, prev, ctx) =>
-        this.each(it, (k, v) =>
-            prev = fx.call(ctx, prev, k, v), prev)
-
-    static group = (k, it) => it
-        ? this.groupBy(it, o => o[ k ])
-        : this.group.bind(this, k)
-
-    static pro = (a, b) => b
-        ? this.setPrototypeOf(a, b)
-        : this.getPrototypeOf(a)
-
-    static dig(src, path, fallback) {
-        return path.split('.').every(k => (src = src[ k ]) != null)
-            ? src
-            : fallback
-    }
-
-    static dump(o, tab = 4) {
-        if (tab === +tab)
-            tab = ' '.repeat(tab)
-
-        return (function inner(prev, next, path, key = '') {
-            let line = tab.repeat(path.length) + key
-
-            if (O.cmplx(next)) {
-                prev.push(line)
-                O.each(next, Array.isArray(next) || Set[ Symbol.hasInstance ](next)
-                    ? (k, v) => inner(prev, v, path.concat(k), '- ')
-                    : (k, v) => inner(prev, v, path.concat(k), k + ': '))
-            }
-            else {
-                prev.push(line + next)
-            }
-            return prev
-        })([], o, []).join('\n')
-    }
 }
-
-O.alias(O, 'reduce map')
 
 export { Fail }
 export const {
@@ -129,16 +89,10 @@ export const {
     defines,
     descriptor,
     descriptors,
-    from,
-    is,
-    of,
-    set,
-    cmplx,
-    use,
-    alias,
-    each,
-    reduce, map,
     group,
-    dig,
     pro,
+    set,
+    use,
+    each,
+    alias,
 } = O
