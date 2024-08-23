@@ -1,7 +1,7 @@
 // @ts-check
 
-import { MIME } from '../constants.js'
-
+import Pt from 'node:path'
+import { MIME } from './constants.js'
 /**
  * @typedef { import('http').IncomingHttpHeaders | Map | Headers | Record<PropertyKey, any> } Head
  */
@@ -73,3 +73,19 @@ export function is(expected, actual) {
         : fromHead(actual)
     return e.startsWith(a)
 }
+
+/**
+ * @param  { string } path
+ * @param  { string } dir
+ * @param  { Record<string, string> } stub
+ * @return { string }
+ */
+export function sanitize(path, dir, stub) {
+    return sanitize.cache[ path ] ??= path in stub
+        ? Pt.isAbsolute(stub[ path ])
+            ? stub[ path ]
+            : Pt.join(dir, stub[ path ])
+        : Pt.join(dir, Pt.normalize(path))
+}
+
+sanitize.cache = { __proto__: null }
