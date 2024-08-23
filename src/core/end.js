@@ -1,4 +1,5 @@
 import { Stream } from 'stream'
+import { HEADER, STATUS, MIME } from '../util/constants.js'
 
 /**
  * @param  { import('node:http').ServerResponse } rs
@@ -6,24 +7,25 @@ import { Stream } from 'stream'
  */
 export default function end(rs, body) {
 
-    if (rs.statusCode === 204 || rs.statusCode === 304) {
-        set(rs, 'content-length', 0)
+    if (rs.statusCode === STATUS.NO.CONTENT
+     || rs.statusCode === STATUS.NOT.MODIFIED) {
+        set(rs, HEADER.CONTENT.LENGTH, 0)
         rs.end()
         return
     }
 
     if (Stream[ Symbol.hasInstance ](body)) {
-        set(rs, 'content-type', 'octet-stream')
+        set(rs, HEADER.CONTENT.TYPE, MIME.bin)
         body.pipe(rs)
         return
     }
 
     if (!Buffer.isBuffer(body)) {
-        set(rs, 'content-type', 'application/json')
+        set(rs, HEADER.CONTENT.TYPE, MIME.json)
         body = JSON.stringify(body)
     }
 
-    set(rs, 'content-length', Buffer.byteLength(body))
+    set(rs, HEADER.CONTENT.LENGTH, Buffer.byteLength(body))
     rs.end(body)
 }
 
