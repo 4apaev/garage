@@ -89,6 +89,7 @@ export const {
     defines,
     descriptor,
     descriptors,
+    assign,
     group,
     pro,
     set,
