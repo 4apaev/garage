@@ -27,8 +27,8 @@ Is.n = Number.isFinite
 Is.B = Buffer.isBuffer
 Is.own = Object.hasOwn
 
-Is.cmplx = x => Object(x) === x
-Is.prmtv = x => Object(x) !== x
+Is.x = Is.cmplx = x => Object(x) === x
+Is.X = Is.prmtv = x => Object(x) !== x
 
 Is.any = (x, ...types) => {
     let Sx = Is.T(x)
