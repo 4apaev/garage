@@ -1,7 +1,8 @@
 // @ts-check
 
 import Pt from 'node:path'
-import { MIME } from './constants.js'
+import { MIME, HEADER } from './constants.js'
+
 /**
  * @typedef { import('http').IncomingHttpHeaders | Map | Headers | Record<PropertyKey, any> } Head
  */
@@ -24,8 +25,8 @@ export function get(s, fallback) {
  */
 export function fromHead(ctx, fallback) {
     const re = typeof ctx?.get == 'function'
-        ? ctx.get('Content-Type') ?? ctx.get('content-type')
-        : ctx?.[ 'Content-Type' ] ?? ctx?.[ 'content-type' ]
+        ? ctx.get(HEADER.CONTENT.TYPE) ?? ctx.get(HEADER.CONTENT.TYPE.toLowerCase())
+        : ctx?.[ HEADER.CONTENT.TYPE ] ?? ctx?.[ HEADER.CONTENT.TYPE ]
     return re ?? fallback ?? ''
 }
 
