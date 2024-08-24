@@ -6,6 +6,7 @@ import reader from './src/mw/reader.js'
 import logger from './src/mw/logger.js'
 
 import * as User from './src/routes/user.js'
+import * as Post from './src/routes/post.js'
 
 const {
     APP_PORT,
@@ -23,42 +24,35 @@ server.listen(process.env.APP_PORT, () => {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 async function handle(rq, rs) {
-    const url = rq.URL = new URL(rq.url, 'file:')
-    const method = rq.method
+    rq.URL = new URL(rq.url, 'file:')
 
     logger(rq, rs)
 
-    if (method !== 'GET' || method !== 'HEAD')
+    if ('PUT POST DELETE'.includes(rq.method))
         await reader(rq, rs)
 
-    if (rs.statusCode === 400)
-        return rs.end(Http.STATUS_CODES[ rs.statusCode ])
+    switch (`${ rq.method }:${ rq.URL.pathname }`) {
 
-    if (url.pathname.startsWith('/api')) {
-        if (url.pathname.startsWith('/api/user'))
-            return handleRoute(rq, rs, User)
+        case 'GET:/api/user': return User.get(rq, rs)
+        case 'PUT:/api/user': return User.update(rq, rs)
+        case 'POST:/api/user': return User.create(rq, rs)
+        case 'DELETE:/api/user': return User.remove(rq, rs)
+
+        case 'GET:/api/v1/user': return User.v1.get(rq, rs)
+        case 'PUT:/api/v1/user': return User.v1.update(rq, rs)
+        case 'POST:/api/v1/user': return User.v1.create(rq, rs)
+        case 'DELETE:/api/v1/user': return User.v1.remove(rq, rs)
+
+        case 'DELETE:/api/v1/post': return Post.v1.remove(rq, rs)
+        case 'POST:/api/v1/post': return Post.v1.create(rq, rs)
+        case 'PUT:/api/v1/post': return Post.v1.update(rq, rs)
+        case 'GET:/api/v1/post': return Post.v1.get(rq, rs)
+
+        case 'DELETE:/api/post': return Post.remove(rq, rs)
+        case 'POST:/api/post': return Post.create(rq, rs)
+        case 'PUT:/api/post': return Post.update(rq, rs)
+        case 'GET:/api/post': return Post.get(rq, rs)
+
+        default: return rs.end(Http.STATUS_CODES[ rs.statusCode = 403 ])
     }
-
-    rs.statusCode = 403
-    rs.end(Http.STATUS_CODES[ rs.statusCode ])
 }
-
-function handleRoute(rq, rs, Route) { // eslint-disable-next-line
-         if (rq.method === 'POST')    Route.create(rq, rs)
-    else if (rq.method === 'PUT')     Route.update(rq, rs)
-    else if (rq.method === 'DELETE')  Route.remove(rq, rs)
-    else if (rq.method === 'GET')     Route.get(rq, rs)
-    else
-        rs.end(Http.STATUS_CODES[ rs.statusCode = 405 ])
-}
-
-/*
- * @template { View } T
- * @template { any[] } U
- * @param    { new(...args: U) => T } ViewClass
- * @param    { U } [data]
- * @return   { T }
- */
-// function createView(ViewClass, ...data) {
-//     return new ViewClass(...data)
-// }
