@@ -12,9 +12,6 @@ export {
     TRequest,
 }
 
-// export type TVal = number | string | string[] | undefined
-// export type TBody = string | Buffer | NodeJS.ArrayBufferView | ArrayBuffer
-
 export type Handler = (rq: IRequest, rs: IResponse, next?: () => void) => void
 export type Validator = (rq: IRequest) => boolean
 
@@ -46,7 +43,6 @@ export interface IResponse extends EventEmitter {
     rs: TResponse
 
     body?: any
-    code: number
     status: number
 
 
@@ -60,10 +56,10 @@ export interface IResponse extends EventEmitter {
 
 
     has(k: string): boolean
-    del(k: string): boolean
     get(k: string): number | string | string[] | undefined
     set(k: string, v: number | string | string[] | undefined): IResponse
     append(k: string, v: number | string | string[] | undefined): IResponse
+    rm(k: string): boolean
 
     end(x?: any): IResponse
 
