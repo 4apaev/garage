@@ -42,7 +42,7 @@ export default class Fail extends Error {
         this[ Symbol.hasInstance ](x)
 
     /**
-     * @param    { string        } m
+     * @param    { string | number } m
      * @param    { ErrorOptions  } [c]
      * @param    { Function      } [f = Fail.of]
      * @return   { Fail          }
@@ -51,7 +51,7 @@ export default class Fail extends Error {
         Reflect.construct(this, [ m, c, f ?? this.of ])
 
     /**
-     * @param    { string        } [m]
+     * @param    { string | number } [m]
      * @param    { ErrorOptions  } [c]
      * @param    { Function      } [f = Fail.deny]
      * @return   { Promise<Fail> }
@@ -61,7 +61,7 @@ export default class Fail extends Error {
 
     /**
      * @param    { any       }  x
-     * @param    { string    } [m]
+     * @param    { string | number } [m]
      * @param    { any       } [c]
      * @param    { Function  } [f = Fail.raise]
      * @throws   { Fail      }
@@ -71,7 +71,7 @@ export default class Fail extends Error {
 
     /**
      * @throws   { Fail     }
-     * @param    { string   } [m]
+     * @param    { string | number } [m]
      * @param    { any      } [c]
      * @param    { Function } [f = Fail.raise]
      * @return   { never    }
