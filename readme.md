@@ -1,19 +1,13 @@
-🛟 Gws Common
-=============
-
-Gateway Services
-----------------
-- 🛟 **gws.common**
-- 🐔 gws.users
-- 💈 gws.front
-- 🗂 gws.files
-- 🛎 gws.notification
+🚂 Garage
+=========
 
 ```sh
   # pass vars to npm scripts
   npm run send -- one two 3 4
 
 ```
+
+## Regex Look Ahead/Behind
 
 ```
 ┌───────────┬────────┬───────────┬───────────────────┬───────┐
@@ -32,64 +26,66 @@ Gateway Services
 │ Exports               │
 └┬──────────────────────┘
  │
- ├── .env
- ├── .env.example
- ├── .eslintrc.yml
+ ├── .git
  ├── .gitignore
+ ├── .env.example
+ ├── .env
+ ├── .eslintrc.yml
+ │
  ├── index.js
+ ├── readme.md
  ├── tsconfig.json
  ├── package.json
  ├── package-lock.json
- ├── readme.md
+ │
+ ├─┬ .vscode
+ │ ├── garage.code-workspace
+ │ ├── launch.json
+ │ └── tasks.json
  │
  ├─┬ scripts
- │ ├── pre.sh
- │ ├── fold.yml
- │ ├── fold.crap.yml
- │ ├── generate.service.js
- │ ├── env.update.js
- │ └── lints.js
+ │ ├── pre
+ │ ├── certs
+ │ └── web.socket.js
  │
  ├─┬ test
- │ ├── is.spec.js
- │ ├── use.spec.js
+ │ ├── compose.spec.js
  │ ├── qurl.spec.js
- │ └── compose.spec.js
+ │ ├── is.spec.js
+ │ └── use.spec.js
  │
  └─┬ src
    ├── init.js
    ├── router.js
    ├── constants.js
+   │
    ├─┬ core
-   │ ├── end.js
    │ ├── use.js
-   │ ├── use.single.js
-   │ ├── path2regex.js
-   │ ├── response.js
-   │ ├── request.js
+   │ ├── end.js
+   │ ├── init.js
    │ ├── compose.js
    │ ├── context.js
-   │ ├── init.js
-   │ └── core.d.ts
+   │ ├── request.js
+   │ └── response.js
    │
    ├─┬ mw
+   │ ├── ws.js
    │ ├── cors.js
    │ ├── logger.js
    │ ├── reader.js
-   │ └── static.js
+   │ ├── static.js
+   │ ├── static.h1.js
+   │ └── static.h2.js
    │
    └─┬ util
      ├── is.js
-     ├── arguments.js
-     ├── async.ierator.js
-     ├── exec.js
+     ├── use.js
+     ├── dump.js
      ├── fail.js
-     ├── fold.js
      ├── mime.js
      ├── qurl.js
-     ├── rand.js
-     ├── tic.js
-     └── use.js
+     ├── helpers.js
+     └── constants.js
 ```
 
 

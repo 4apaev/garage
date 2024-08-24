@@ -1,11 +1,11 @@
 {
-    "name"       : "gw-user-service",
+    "name"       : "garage",
     "author"     : "Michael Miretsky",
     "version"    : "0.0.1",
     "license"    : "MIT",
     "type"       : "module",
     "main"       : "index.js",
-    "repository" : "github:4apaev/gw-user-service",
+    "repository" : "github:4apaev/garage",
     "scripts"    : {
         "version": "sed 's/\\=.*/=/g;s/\\#.*//g' ./.env > ./.env.kobi",
         "start": "node --env-file=./.env  index.js",
@@ -15,6 +15,6 @@
     },
     "devDependencies": {
         "@types/node": "^22.5.0",
-        "eslint": "^9.4.0"
+        "eslint": "^8.57.0"
     }
 }
