@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl"                          : "./src",
     "outDir"                           : "./dist",
     "target"                           : "esnext",
     "module"                           : "nodenext",
@@ -13,9 +12,5 @@
     "pretty"                           : true,
     "strict"                           : false,
   },
-
-
-
   "include": [ "./src" ],
-  // "exclude": [ "./scripts" ]
 }

@@ -5,7 +5,7 @@ import {
     IncomingMessage as TRequest,
 } from 'node:http'
 
-import QURL from 'util/qurl.js'
+import QURL from './util/qurl.js'
 
 export {
     TResponse,

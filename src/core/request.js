@@ -6,7 +6,7 @@ import { HEADER, STATUS } from '../util/constants.js'
 import O from '../util/use.js'
 import Qurl from '../util/qurl.js'
 import Fail from '../util/fail.js'
-import dump from 'util/dump.js'
+import dump from '../util/dump.js'
 import * as Mim from '../util/mime.js'
 
 const IT = Symbol.iterator
@@ -103,5 +103,5 @@ export default class Req extends EventEmitter {
 
 }
 
-/** @typedef { import('core.js').IRequest } IRequest */
-/** @typedef { import('core.js').TRequest } TRequest */
+/** @typedef { import('../core.js').IRequest } IRequest */
+/** @typedef { import('../core.js').TRequest } TRequest */

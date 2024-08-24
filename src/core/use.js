@@ -101,8 +101,8 @@ function path2rgx(path) {
     return new RegExp(String.raw`^${ tmpl }`)               // match only from the begining of the string to avoid matches in the midlle of a url
 }
 
-/** @typedef { import('core.js').IRequest } Req */
-/** @typedef { import('core.js').IResponse } Res */
-/** @typedef { import('core.js').Validator } Validator */
-/** @typedef { import('core.js').Handler } Handler */
+/** @typedef { import('../core.js').IRequest } Req */
+/** @typedef { import('../core.js').IResponse } Res */
+/** @typedef { import('../core.js').Validator } Validator */
+/** @typedef { import('../core.js').Handler } Handler */
 /** @typedef { (method: string, path: string | RegExp, handler: Handler) => Handler  } UseMethod */

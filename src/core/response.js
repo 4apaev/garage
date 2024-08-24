@@ -177,5 +177,5 @@ export default class Res extends EventEmitter {
 alias(Res.prototype, 'status code')
 alias(Res.prototype, 'rm remove delete del')
 
-/** @typedef { import('core.js').IResponse } IResponse */
-/** @typedef { import('core.js').TResponse } TResponse */
+/** @typedef { import('../core.js').IResponse } IResponse */
+/** @typedef { import('../core.js').TResponse } TResponse */
