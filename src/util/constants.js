@@ -1,5 +1,8 @@
 /* eslint-disable key-spacing */
 
+import { STATUS_CODES   } from 'node:http'
+export { STATUS_CODES }
+
 export const HEADER = {
     PATH: ':path',
     STATUS: ':status',
