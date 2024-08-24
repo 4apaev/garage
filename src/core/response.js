@@ -2,12 +2,12 @@
 
 import { Stream         } from 'node:stream'
 import { EventEmitter   } from 'node:events'
-import { STATUS_CODES   } from 'node:http'
 import Fs                 from 'node:fs'
 
 import Is                 from '../util/is.js'
-import { HEADER, STATUS } from '../util/constants.js'
+import { alias          } from '../util/use.js'
 import { MIME, fromPath } from '../util/mime.js'
+import { HEADER, STATUS, STATUS_CODES } from '../util/constants.js'
 
 /**
  * @implements {IResponse}
@@ -28,10 +28,8 @@ export default class Res extends EventEmitter {
         })
     }
 
-    get code()    { return this.status }
     get status()  { return this.rs.statusCode }
     set status(x) {        this.rs.statusCode = x }
-    set code(x)   {        this.status = x }
 
     get auth()    { return this.get(HEADER.AUTHORIZATION) }
     get date()    { return this.get(HEADER.DATE) }
@@ -54,18 +52,6 @@ export default class Res extends EventEmitter {
      * @return { boolean }
      */
     has(k) { return this.rs.hasHeader(k) }
-
-    /**
-     * @param  { string } k
-     * @return { boolean }
-     */
-    del(k) {
-        if (this.has(k)) {
-            this.rs.removeHeader(k)
-            return true
-        }
-        return  false
-    }
 
     /**
      * @param  { string } k
@@ -100,6 +86,12 @@ export default class Res extends EventEmitter {
     }
 
     /**
+     * @param  { string } k
+     * @return { boolean }
+     */
+    rm(k) { return this.has(k) ? (this.rs.removeHeader(k), true) : false }
+
+    /**
      * @param  { any } x
      * @return { IResponse }
      */
@@ -126,7 +118,7 @@ export default class Res extends EventEmitter {
             return this
         }
 
-        if (!Buffer.isBuffer(x)) {
+        if (Is.o(x) && !Is.B(x)) {
             this.type ??= MIME.json
             x = JSON.stringify(x)
         }
@@ -137,37 +129,22 @@ export default class Res extends EventEmitter {
     }
 
     /**
-     * @param  { number } [status=200]
+     * @param  { number } status
      * @param  { any } [body]
      * @return { IResponse }
      */
     send(status, body) {
-        if (Is.o(status))
-            [ status, body ] = [ body, status ]
-
-        if (Is.N(status))
-            this.status = status
-        else
-            this.status ??= STATUS.OK
-
-        this.body = body
-        return this.end()
+        this.status = status
+        return this.end(this.body = body)
     }
 
     /**
-     * @param { number } [status=200]
-     * @param { any } [body]
+     * @param { number } status
+     * @param { any } body
      */
     json(status, body) {
-        if (Is.o(status))
-            [ status, body ] = [ STATUS.OK, status ]
-
-        this.status = status
         this.type = MIME.json
-        this.body = JSON.stringify(body)
-        this.size = Buffer.byteLength(this.body)
-        this.rs.end(this.body)
-        return this
+        return this.send(status, body)
     }
 
     /**
@@ -178,6 +155,8 @@ export default class Res extends EventEmitter {
         return new Promise(ok => {
             Fs.stat(path, (e, s) => {
                 if (e) {
+                    console.error(STATUS.NOT.FOUND, STATUS_CODES[ STATUS.NOT.FOUND ], path)
+
                     this.status = STATUS.NOT.FOUND
                     this.size = 0
                     this.rs.end()
@@ -194,6 +173,9 @@ export default class Res extends EventEmitter {
         })
     }
 }
+
+alias(Res.prototype, 'status code')
+alias(Res.prototype, 'rm remove delete del')
 
 /** @typedef { import('core.js').IResponse } IResponse */
 /** @typedef { import('core.js').TResponse } TResponse */

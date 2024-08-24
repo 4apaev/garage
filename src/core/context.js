@@ -18,7 +18,7 @@ export default class App {
     upgrade(rq, soc, head) {
         soc.write('HTTP/1.1 101 Web Socket Protocol Handshake\r\n')
         soc.write('upgrade: WebSocket\r\n')
-        soc.write('connection: Upgrade\r\n')
+        soc.write('connection: Upgrade\r\n\r\n')
         soc.pipe(soc) // echo back
     }
 
@@ -33,5 +33,9 @@ export default class App {
         })
 
         server.on('upgrade', this.upgrade)
+    }
+
+    static of() {
+        return new this
     }
 }
