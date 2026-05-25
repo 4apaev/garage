@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "types"                            : [ "node", "./src/types.d.ts" ],
-    "rootDir"                          : "src",
+    "rootDir"                          : "./",
     "outDir"                           : "dist",
     "target"                           : "ES2023",
     "module"                           : "NodeNext",
@@ -14,5 +14,6 @@
     "strict"                           : false
   },
 
-  "include": [ "src" ],
+  "include": [ "src", "test" ],
+  "exclude": [ ".vscode", "node_modules" ],
 }
