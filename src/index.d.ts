@@ -1,10 +1,14 @@
+import Router from './garage.js'
+
 export {
     Req,
     Res,
     Router,
-    create,
     default as Garage,
+    create,
 } from './garage.js'
+
+export default Router
 
 export { default as use } from './use.js'
 

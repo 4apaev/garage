@@ -2,8 +2,8 @@ export {
     Req,
     Res,
     Router,
-    create,
     default as Garage,
+    create,
 } from './garage.js'
 
 export {
