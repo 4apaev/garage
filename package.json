@@ -1,0 +1,49 @@
+{
+    "name"        : "garage",
+    "version"     : "0.0.1",
+    "description" : "a small http server, router, and middleware toolkit",
+    "repository"  : "github:4apaev/garage",
+    "type"        : "module",
+    "main"        : "./src/index.js",
+    "types"       : "./src/index.d.ts",
+    "files"       : [ "src" ],
+    "exports": {
+        ".": {
+            "types"  : "./src/index.d.ts",
+            "default": "./src/index.js"
+        },
+        "./compose": {
+            "types"  : "./src/compose.d.ts",
+            "default": "./src/compose.js"
+        },
+        "./garage": {
+            "types"  : "./src/garage.d.ts",
+            "default": "./src/garage.js"
+        },
+        "./use": {
+            "types"  : "./src/use.d.ts",
+            "default": "./src/use.js"
+        },
+        "./util": {
+            "types"  : "./src/util.d.ts",
+            "default": "./src/util.js"
+        },
+        "./mime": {
+            "types"  : "./src/mime.d.ts",
+            "default": "./src/mime.js"
+        }
+    },
+    "scripts": {
+        "test": "node --experimental-test-coverage --test ./test/*.spec.js",
+        "lint": "eslint ."
+    },
+    "engines": {
+        "node": ">=24"
+    },
+    "devDependencies": {
+        "@eslint/js" : "^10.0.1",
+        "@types/node": "^25.9.1",
+        "eslint"     : "^10.4.0",
+        "globals"    : "^17.6.0"
+    }
+}

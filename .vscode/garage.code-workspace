@@ -1,0 +1,17 @@
+{
+    "folders": [
+        {
+            "path": "../",
+            "name": "🛵 garage"
+        }
+    ],
+
+    "settings": {
+
+        "files.exclude": {
+            ".git": true,
+            // "node_modules": true,
+        }
+    },
+}
+
