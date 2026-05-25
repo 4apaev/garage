@@ -71,9 +71,39 @@ describe('garage', () => {
         equal(reported, app.options)
     })
 
+    it('listens on the configured port and reports options', t => {
+        const app = new Router({ name: 'shop', port: 1234 })
+        let port
+
+        t.mock.method(console, 'table')
+
+        app.server = {
+            listen(p, ready) {
+                port = p
+                ready()
+            } }
+
+        app.listen()
+
+        equal(console.table.mock.callCount(), 1)
+
+        const [ call ] = console.table.mock.calls
+
+        equal(call.this, console)
+        equal(call.arguments.length, 1)
+
+        const [ argv ] = call.arguments
+
+        equal(argv.port, 1234)
+        equal(argv.name, 'shop')
+        deepEqual(argv, app.options)
+
+        t.mock.reset()
+    })
+
     it('routes by method and url pattern', async () => {
         const app = new Router
-        const rs = response()
+        const rs = new MockRes
         const rq = {
             method: 'GET',
             params: Object.create(null),
@@ -91,7 +121,7 @@ describe('garage', () => {
 
     it('recomposes router middleware when routes are added', async () => {
         const app = new Router
-        const rs = response()
+        const rs = new MockRes
 
         app.get('/first', (req, res, next) => next())
         await app.handle(request('/first'), rs)
@@ -112,10 +142,10 @@ describe('garage', () => {
         app.patch('/items/:id', rq => seen.push([ rq.method, rq.params.id ]))
         app.del('/items/:id', rq => seen.push([ rq.method, rq.params.id ]))
 
-        await app.handle(request('/items/a', 'PUT'), response())
-        await app.handle(request('/items/b', 'POST'), response())
-        await app.handle(request('/items/c', 'PATCH'), response())
-        await app.handle(request('/items/d', 'DELETE'), response())
+        await app.handle(request('/items/a', 'PUT'), new MockRes)
+        await app.handle(request('/items/b', 'POST'), new MockRes)
+        await app.handle(request('/items/c', 'PATCH'), new MockRes)
+        await app.handle(request('/items/d', 'DELETE'), new MockRes)
 
         deepEqual(seen, [
             [ 'PUT', 'a' ],
@@ -129,12 +159,9 @@ describe('garage', () => {
         const body = JSON.stringify({ ok: true })
         const rq = readableRequest({
             body,
-            headers: {
-                'content-length': String(body.length),
-                'content-type'  : 'application/json',
-            },
-            method: 'POST',
-            url   : '/hello?x=1&y=two',
+            url    : '/hello?x=1&y=two',
+            method : 'POST',
+            headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) },
         })
 
         ok(rq instanceof Req)
@@ -142,18 +169,18 @@ describe('garage', () => {
 
         deepEqual({
             body : rq.body,
-            has  : rq.has('Content-Type'),
             path : rq.path,
             query: rq.query,
             size : rq.size,
             type : rq.get('Content-Type'),
+            has  : rq.has('Content-Type'),
         }, {
             body : { ok: true },
-            has  : true,
             path : '/hello',
-            query: { x: '1', y: 'two' },
+            query: { x: '1', y: 'two', __proto__: null },
             size : body.length,
             type : 'application/json',
+            has  : true,
         })
     })
 
@@ -170,17 +197,9 @@ describe('garage', () => {
     })
 
     it('reads empty json, text, and binary request bodies', async () => {
-        const json = readableRequest({
-            headers: { 'content-type': 'application/json' },
-        })
-        const text = readableRequest({
-            body   : 'hello',
-            headers: { 'content-type': 'text/plain; charset=utf-8' },
-        })
-        const bin = readableRequest({
-            body   : Buffer.from([ 1, 2, 3 ]),
-            headers: { 'content-type': 'application/octet-stream' },
-        })
+        const json = readableRequest({ headers: { 'content-type': 'application/json' }})
+        const text = readableRequest({ headers: { 'content-type': 'text/plain; charset=utf-8' }, body: 'hello' })
+        const bin  = readableRequest({ headers: { 'content-type': 'application/octet-stream' }, body: Buffer.from([ 1, 2, 3 ]) })
 
         await json.reader()
         await text.reader()
@@ -198,32 +217,32 @@ describe('garage', () => {
         await Fs.writeFile(file, 'file body')
 
         try {
-            const json = response()
+            const json = new MockRes
             json.json(202, { ok: true })
             equal(json.status, 202)
             equal(json.get('content-type'), 'application/json')
             equal(json.get('content-length'), 11)
             equal(json.text(), '{"ok":true}')
 
-            const text = response()
+            const text = new MockRes
             text.send(203, 'plain')
             equal(text.status, 203)
             equal(text.get('content-type'), 'text/plain')
             equal(text.text(), 'plain')
 
-            const buffer = response()
+            const buffer = new MockRes
             buffer.send(200, Buffer.from('bytes'))
             await once(buffer, 'finish')
             equal(buffer.get('content-type'), 'application/octet-stream')
             equal(buffer.text(), 'bytes')
 
-            const empty = response()
+            const empty = new MockRes
             empty.send(204)
             equal(empty.status, 204)
             equal(empty.get('content-length'), 0)
             equal(empty.text(), '')
 
-            const filed = response()
+            const filed = new MockRes
             await filed.file(file)
             equal(filed.get('content-type'), 'text/plain')
             equal(filed.get('content-length'), 9)
@@ -235,12 +254,12 @@ describe('garage', () => {
     })
 
     it('sends plain objects as json and preserves explicit response types', () => {
-        const object = response()
+        const object = new MockRes
         object.send(200, { ok: true })
         equal(object.get('content-type'), 'application/json')
         equal(object.text(), '{"ok":true}')
 
-        const html = response()
+        const html = new MockRes
         html.type = 'html'
         html.send(200, '<p>hi</p>')
         equal(html.get('content-type'), 'text/html')
@@ -248,7 +267,7 @@ describe('garage', () => {
     })
 
     it('sets, appends, and removes response headers', () => {
-        const rs = response()
+        const rs = new MockRes
 
         equal(rs.set('x-one', '1'), rs)
         equal(rs.set({ 'x-two': '2' }), rs)
@@ -263,7 +282,7 @@ describe('garage', () => {
     })
 
     it('turns missing files into 404 responses', async () => {
-        const rs = response()
+        const rs = new MockRes
         const error = console.error
 
         console.error = () => {}
@@ -301,51 +320,20 @@ function readableRequest(opt) {
     return rq
 }
 
-function response() {
-    return new MockRes
-}
-
 class MockRes extends Writable {
-    chunks = []
-    headers = Object.create(null)
+    chunks     = []
     statusCode = 200
-
-    _write(chunk, enc, next) {
-        this.chunks.push(Buffer.from(chunk))
-        next()
-    }
-
-    setHeader(k, v) {
-        this.headers[ k.toLowerCase() ] = v
-        return this
-    }
-
-    appendHeader(k, v) {
-        const key = k.toLowerCase()
-        const old = this.headers[ key ]
-
-        this.headers[ key ] = old == null
-            ? v
-            : [ old, v ].flat()
-
-        return this
-    }
-
-    getHeader(k) {
-        return this.headers[ k.toLowerCase() ]
-    }
-
-    hasHeader(k) {
-        return k.toLowerCase() in this.headers
-    }
-
-    removeHeader(k) {
-        delete this.headers[ k.toLowerCase() ]
-    }
-
-    text() {
-        return Buffer.concat(this.chunks).toString('utf8')
-    }
+    hd         = Object.create(null)
+    hasHeader(k)       { return k.toLowerCase() in this.hd }
+    getHeader(k)       { return this.hd[ k.toLowerCase() ] }
+    setHeader(k, v)    { return this.hd[ k.toLowerCase() ] = v, this }
+    removeHeader(k)    { return delete this.hd[ k.toLowerCase() ], this }
+    appendHeader(k, v) { return this.hasHeader(k = k.toLowerCase()) ? (this.hd[ k ] = [].concat(this.hd[ k ], v).map(String), this) : this.setHeader(k, v) }
+    text()             { return Buffer.concat(this.chunks).toString('utf8') }
+    _write(x, _, next) { this.chunks.push(Buffer.from(x)), next() }
 }
 
-Object.defineProperties(MockRes.prototype, Object.getOwnPropertyDescriptors(Res.prototype))
+Object.defineProperties(
+    MockRes.prototype,
+    Object.getOwnPropertyDescriptors(
+        Res.prototype))

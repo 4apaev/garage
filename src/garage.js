@@ -1,13 +1,13 @@
 import Fs   from 'node:fs/promises'
+import Qs   from 'node:querystring'
 import Http from 'node:http'
+
 import { Readable     } from 'node:stream'
 import { EventEmitter } from 'node:events'
 import { MIME, fromPath } from './mime.js'
 import { Is, Fail, each } from './util.js'
 import compose from './compose.js'
 import use     from './use.js'
-
-const µ = Symbol('µrl')
 
 export class Router extends EventEmitter {
     handler
@@ -64,12 +64,15 @@ export class Router extends EventEmitter {
     }
 }
 
+const µrl = Symbol('µrl')
+const µqs = Symbol('µqs')
+
 export class Req extends Http.IncomingMessage {
     params = Object.create(null)
 
-    get URL() { return this[ µ ] ??= new URL(this.url, 'file:') }
-    get path() { return this.URL.pathname }
-    get query() { return Object.fromEntries(this.URL.searchParams) }
+    get URL()   { return this[ µrl ] ??= new URL(this.url, 'file:') }
+    get query() { return this[ µqs ] ??= Qs.parse(this.URL.search.replace(/^\?/, ''))  }
+    get path()  { return this.URL.pathname }
 
     get type() { return this.get('content-type') ?? '' }
     get size() { return this.get('content-length') | 0 }
