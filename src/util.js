@@ -142,6 +142,17 @@ export class Fail extends Error {
     }
 
     static of() { return Reflect.construct(this, arguments) }
+
+    static from(e, code) {
+        return this.of(
+            code ?? e.code
+                ?? e.status
+                ?? 500,
+            e.message,
+            e,
+        )
+    }
+
     static deny(...a) { return Promise.reject(this.of(...a)) }
     static raise(...a) { throw this.of(...a) }
 
