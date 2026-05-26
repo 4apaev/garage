@@ -28,6 +28,10 @@
             "types"  : "./src/util.d.ts",
             "default": "./src/util.js"
         },
+        "./sync": {
+            "types"  : "./src/sync.d.ts",
+            "default": "./src/sync.js"
+        },
         "./mime": {
             "types"  : "./src/mime.d.ts",
             "default": "./src/mime.js"
