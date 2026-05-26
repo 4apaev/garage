@@ -134,7 +134,7 @@ export class Res extends Http.ServerResponse {
 
             this.status = 200
             this.size = stat.size
-            this.type = fromPath(path, MIME.txt)
+            this.type = fromPath(path, MIME.bin)
             this.body = fd.createReadStream({ autoClose: false })
                 .pipe(this)
 
