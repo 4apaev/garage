@@ -8,38 +8,18 @@
     "types"       : "./src/index.d.ts",
     "files"       : [ "src" ],
     "exports": {
-        ".": {
-            "types"  : "./src/index.d.ts",
-            "default": "./src/index.js"
-        },
-        "./compose": {
-            "types"  : "./src/compose.d.ts",
-            "default": "./src/compose.js"
-        },
-        "./garage": {
-            "types"  : "./src/garage.d.ts",
-            "default": "./src/garage.js"
-        },
-        "./use": {
-            "types"  : "./src/use.d.ts",
-            "default": "./src/use.js"
-        },
-        "./util": {
-            "types"  : "./src/util.d.ts",
-            "default": "./src/util.js"
-        },
-        "./sync": {
-            "types"  : "./src/sync.d.ts",
-            "default": "./src/sync.js"
-        },
-        "./mime": {
-            "types"  : "./src/mime.d.ts",
-            "default": "./src/mime.js"
-        }
+        "."        : { "types"  : "./src/index.d.ts"   , "default": "./src/index.js"   },
+        "./compose": { "types"  : "./src/compose.d.ts" , "default": "./src/compose.js" },
+        "./garage" : { "types"  : "./src/garage.d.ts"  , "default": "./src/garage.js"  },
+        "./use"    : { "types"  : "./src/use.d.ts"     , "default": "./src/use.js"     },
+        "./util"   : { "types"  : "./src/util.d.ts"    , "default": "./src/util.js"    },
+        "./sync"   : { "types"  : "./src/sync.d.ts"    , "default": "./src/sync.js"    },
+        "./mime"   : { "types"  : "./src/mime.d.ts"    , "default": "./src/mime.js"     }
     },
     "scripts": {
-        "test": "node --experimental-test-coverage --test ./test/*.spec.js",
-        "lint": "eslint ."
+        "test"     : "node --experimental-test-coverage --test ./test/*.spec.js",
+        "lint"     : "eslint .",
+        "typecheck": "tsc --noEmit"
     },
     "engines": {
         "node": ">=24"
@@ -48,6 +28,7 @@
         "@eslint/js" : "^10.0.1",
         "@types/node": "^25.9.1",
         "eslint"     : "^10.4.0",
-        "globals"    : "^17.6.0"
+        "globals"    : "^17.6.0",
+        "typescript" : "^6.0.3"
     }
 }
