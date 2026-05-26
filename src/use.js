@@ -15,13 +15,8 @@ const METHOD = new Set(`
     LINK   UNLINK
 `.match(/\w+/g))
 
-/**
- * @param  { string  } mtd
- * @param  { string  } upt
- * @param  { ...MWare[] } mwr
- * @return { MWare  }
- */
-export default function use() {
+export default use
+export function use() {
     /** @type { MWare[]     } */ const handlers   = []
     /** @type { Validator[] } */ const validators = []
     /** @type { URLPattern[]} */ const patterns   = []
