@@ -1,19 +1,11 @@
 // @ts-check
+import { METHODS } from 'node:http'
 import { URLPattern } from 'node:url'
 
 import { Fail } from './util.js'
 import compose from './compose.js'
 
-const METHOD = new Set(`
-    GET    COPY
-    PUT    PATCH UPDATE
-    POST   MERGE
-    DELETE MOVE
-    HEAD   OPTIONS
-    TRACE  SEARCH
-    BIND   UNBIND
-    LINK   UNLINK
-`.match(/\w+/g))
+const METHOD = new Set(METHODS)
 
 export default use
 export function use() {
