@@ -1,7 +1,7 @@
-import { STATUS_CODES } from 'node:http'
 import { describe, it } from 'node:test'
 import * as assrt       from 'node:assert/strict'
 
+import STATUS_CODES from '../src/errors.js'
 import {
     A,
     Is,
@@ -100,7 +100,8 @@ describe('util', () => {
     })
 
     describe('random', () => {
-        it('uses Math.random through valueOf for floats and integer ranges', () => {
+        it('uses Math.random through valueOf for floats and integer ranges', t => {
+            // TODO use t.mock
             const valueOf = random.valueOf
 
             random.valueOf = () => 0.5
@@ -221,9 +222,6 @@ describe('util', () => {
         it('creates by static getters', async () => {
 
             each(STATUS_CODES, (c, m) => {
-                if ((c = +c) < 400)
-                    return
-
                 const e = Fail[ c ]
                 assrt.ok(e instanceof Fail)
                 assrt.equal(e.name   , 'Fail')

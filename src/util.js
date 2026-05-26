@@ -1,4 +1,4 @@
-import { STATUS_CODES } from 'node:http'
+import STATUS_CODES from './errors.js'
 
 export function echo(x) {
     return x
@@ -117,7 +117,7 @@ export function Is(...a) {
     Is.i = x => Symbol.iterator in Object(x)
     Is.I = (y, x) => y[ Symbol.hasInstance ](x)
     Is.F = (y, x) => y === x?.constructor
-    Is.T = (y, x) => y === T(x)
+    Is.T = (y, x) => RegExp(y).test(T(x))
     Is.any = (x, ...y) => y.includes(x?.constructor)
     Is.not = new Proxy(Is, {
         get  : (f, k)    => (...a) => !f[ k ](...a),
