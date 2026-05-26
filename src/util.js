@@ -130,7 +130,7 @@ export class Fail extends Error {
     code = 500
 
     constructor(code, msg, cause = code) {
-        code in STATUS_CODES || ([ code, msg ] = [ msg, code ])
+        Number.isInteger(code) || ([ code, msg ] = [ msg, code ])
         code ??= 500
         msg  ??= STATUS_CODES[ code ]
 
