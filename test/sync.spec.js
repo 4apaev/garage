@@ -106,4 +106,61 @@ describe('sync', () => {
             },
         )
     })
+
+    it('covers the remaining request builder branches', () => {
+        const µ = void 0
+
+        const empty = new Sync('', µ, µ)
+        const head = new Sync('head', '/head', { q: 'x' })
+        const put = Sync.put('/body', 'plain')
+        const del = Sync.del('/gone')
+
+        assrt.equal(empty.method, 'GET')
+        assrt.equal(empty.url.href, 'http://localhost/')
+        assrt.equal(empty.send(), empty)
+        assrt.equal(empty.query(), empty)
+        assrt.equal(empty.type('wat'), empty)
+        assrt.equal(empty.type(), 'wat')
+
+        assrt.equal(head.method, 'HEAD')
+        assrt.equal(head.url.href, 'http://localhost/head?q=x')
+        assrt.equal(head.body, µ)
+
+        assrt.equal(put.method, 'PUT')
+        assrt.equal(put.body, 'plain')
+        assrt.equal(put.type(), '')
+
+        assrt.equal(del.method, 'DELETE')
+        assrt.equal(del.body, µ)
+    })
+
+    it('uses callbacks, thenables, and default fetch rejection handling', async t => {
+        t.mock.method(console, 'error', () => {})
+        t.mock.method(globalThis, 'fetch', async url => {
+            if (String(url).endsWith('/fail')) {
+                const e = new Error('fail')
+                e.code = 503
+                throw e
+            }
+            return new Response('ok', {
+                headers: { 'content-type': 'text/plain' },
+            })
+        })
+
+        const ended = await Sync.get('/ok').end(pay => pay.body.toUpperCase())
+        const thened = await Sync.get('/ok').then(pay => pay.status)
+
+        await assrt.rejects(
+            () => Sync.get('/fail').end(),
+            e => {
+                assrt.equal(e.code, 503)
+                assrt.equal(e.message, 'fail')
+                assrt.equal(console.error.mock.callCount(), 1)
+                return true
+            },
+        )
+
+        assrt.equal(ended, 'OK')
+        assrt.equal(thened, 200)
+    })
 })
