@@ -18,10 +18,11 @@
         "./mime"   : { "types"  : "./src/mime.d.ts"    , "default": "./src/mime.js"     }
     },
     "scripts": {
-        "test"     : "node --experimental-test-coverage --test ./test/*.spec.js",
-        "lint"     : "eslint .",
-        "typecheck": "tsc --noEmit",
-        "postinstall": "node scripts/emap.js"
+        "test"      : "node --experimental-test-coverage --test ./test/*.spec.js",
+        "lint"      : "eslint .",
+        "typecheck" : "tsc --noEmit",
+        "emap"      : "node scripts/emap.js",
+        "check:emap": "node scripts/emap.js --check"
     },
     "devDependencies": {
         "@eslint/js" : "^10.0.1",

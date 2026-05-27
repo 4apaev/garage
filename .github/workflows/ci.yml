@@ -28,6 +28,9 @@ jobs:
       - name: lint
         run: npm run lint
 
+      - name: generated errors
+        run: npm run check:emap
+
       - name: typecheck
         run: npm run typecheck
 
