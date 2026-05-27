@@ -1,0 +1,330 @@
+const SYSERR = Object.create(null)
+SYSERR.E2BIG             = SYSERR[ -7    ] = SYSERR[ 7    ] = { __proto__: null, errno: -7    , key: 'E2BIG'           , msg: 'argument list too long' }
+SYSERR.EACCES            = SYSERR[ -13   ] = SYSERR[ 13   ] = { __proto__: null, errno: -13   , key: 'EACCES'          , msg: 'permission denied' }
+SYSERR.EADDRINUSE        = SYSERR[ -48   ] = SYSERR[ 48   ] = { __proto__: null, errno: -48   , key: 'EADDRINUSE'      , msg: 'address already in use' }
+SYSERR.EADDRNOTAVAIL     = SYSERR[ -49   ] = SYSERR[ 49   ] = { __proto__: null, errno: -49   , key: 'EADDRNOTAVAIL'   , msg: 'address not available' }
+SYSERR.EAFNOSUPPORT      = SYSERR[ -47   ] = SYSERR[ 47   ] = { __proto__: null, errno: -47   , key: 'EAFNOSUPPORT'    , msg: 'address family not supported' }
+SYSERR.EAGAIN            = SYSERR[ -35   ] = SYSERR[ 35   ] = { __proto__: null, errno: -35   , key: 'EAGAIN'          , msg: 'resource temporarily unavailable' }
+SYSERR.EAI_ADDRFAMILY    = SYSERR[ -3000 ] = SYSERR[ 3000 ] = { __proto__: null, errno: -3000 , key: 'EAI_ADDRFAMILY'  , msg: 'address family not supported' }
+SYSERR.EAI_AGAIN         = SYSERR[ -3001 ] = SYSERR[ 3001 ] = { __proto__: null, errno: -3001 , key: 'EAI_AGAIN'       , msg: 'temporary failure' }
+SYSERR.EAI_BADFLAGS      = SYSERR[ -3002 ] = SYSERR[ 3002 ] = { __proto__: null, errno: -3002 , key: 'EAI_BADFLAGS'    , msg: 'bad ai_flags value' }
+SYSERR.EAI_BADHINTS      = SYSERR[ -3013 ] = SYSERR[ 3013 ] = { __proto__: null, errno: -3013 , key: 'EAI_BADHINTS'    , msg: 'invalid value for hints' }
+SYSERR.EAI_CANCELED      = SYSERR[ -3003 ] = SYSERR[ 3003 ] = { __proto__: null, errno: -3003 , key: 'EAI_CANCELED'    , msg: 'request canceled' }
+SYSERR.EAI_FAIL          = SYSERR[ -3004 ] = SYSERR[ 3004 ] = { __proto__: null, errno: -3004 , key: 'EAI_FAIL'        , msg: 'permanent failure' }
+SYSERR.EAI_FAMILY        = SYSERR[ -3005 ] = SYSERR[ 3005 ] = { __proto__: null, errno: -3005 , key: 'EAI_FAMILY'      , msg: 'ai_family not supported' }
+SYSERR.EAI_MEMORY        = SYSERR[ -3006 ] = SYSERR[ 3006 ] = { __proto__: null, errno: -3006 , key: 'EAI_MEMORY'      , msg: 'out of memory' }
+SYSERR.EAI_NODATA        = SYSERR[ -3007 ] = SYSERR[ 3007 ] = { __proto__: null, errno: -3007 , key: 'EAI_NODATA'      , msg: 'no address' }
+SYSERR.EAI_NONAME        = SYSERR[ -3008 ] = SYSERR[ 3008 ] = { __proto__: null, errno: -3008 , key: 'EAI_NONAME'      , msg: 'unknown node or service' }
+SYSERR.EAI_OVERFLOW      = SYSERR[ -3009 ] = SYSERR[ 3009 ] = { __proto__: null, errno: -3009 , key: 'EAI_OVERFLOW'    , msg: 'argument buffer overflow' }
+SYSERR.EAI_PROTOCOL      = SYSERR[ -3014 ] = SYSERR[ 3014 ] = { __proto__: null, errno: -3014 , key: 'EAI_PROTOCOL'    , msg: 'resolved protocol is unknown' }
+SYSERR.EAI_SERVICE       = SYSERR[ -3010 ] = SYSERR[ 3010 ] = { __proto__: null, errno: -3010 , key: 'EAI_SERVICE'     , msg: 'service not available for socket type' }
+SYSERR.EAI_SOCKTYPE      = SYSERR[ -3011 ] = SYSERR[ 3011 ] = { __proto__: null, errno: -3011 , key: 'EAI_SOCKTYPE'    , msg: 'socket type not supported' }
+SYSERR.EALREADY          = SYSERR[ -37   ] = SYSERR[ 37   ] = { __proto__: null, errno: -37   , key: 'EALREADY'        , msg: 'connection already in progress' }
+SYSERR.EBADF             = SYSERR[ -9    ] = SYSERR[ 9    ] = { __proto__: null, errno: -9    , key: 'EBADF'           , msg: 'bad file descriptor' }
+SYSERR.EBUSY             = SYSERR[ -16   ] = SYSERR[ 16   ] = { __proto__: null, errno: -16   , key: 'EBUSY'           , msg: 'resource busy or locked' }
+SYSERR.ECANCELED         = SYSERR[ -89   ] = SYSERR[ 89   ] = { __proto__: null, errno: -89   , key: 'ECANCELED'       , msg: 'operation canceled' }
+SYSERR.ECHARSET          = SYSERR[ -4080 ] = SYSERR[ 4080 ] = { __proto__: null, errno: -4080 , key: 'ECHARSET'        , msg: 'invalid Unicode character' }
+SYSERR.ECONNABORTED      = SYSERR[ -53   ] = SYSERR[ 53   ] = { __proto__: null, errno: -53   , key: 'ECONNABORTED'    , msg: 'software caused connection abort' }
+SYSERR.ECONNREFUSED      = SYSERR[ -61   ] = SYSERR[ 61   ] = { __proto__: null, errno: -61   , key: 'ECONNREFUSED'    , msg: 'connection refused' }
+SYSERR.ECONNRESET        = SYSERR[ -54   ] = SYSERR[ 54   ] = { __proto__: null, errno: -54   , key: 'ECONNRESET'      , msg: 'connection reset by peer' }
+SYSERR.EDESTADDRREQ      = SYSERR[ -39   ] = SYSERR[ 39   ] = { __proto__: null, errno: -39   , key: 'EDESTADDRREQ'    , msg: 'destination address required' }
+SYSERR.EEXIST            = SYSERR[ -17   ] = SYSERR[ 17   ] = { __proto__: null, errno: -17   , key: 'EEXIST'          , msg: 'file already exists' }
+SYSERR.EFAULT            = SYSERR[ -14   ] = SYSERR[ 14   ] = { __proto__: null, errno: -14   , key: 'EFAULT'          , msg: 'bad address in system call argument' }
+SYSERR.EFBIG             = SYSERR[ -27   ] = SYSERR[ 27   ] = { __proto__: null, errno: -27   , key: 'EFBIG'           , msg: 'file too large' }
+SYSERR.EHOSTUNREACH      = SYSERR[ -65   ] = SYSERR[ 65   ] = { __proto__: null, errno: -65   , key: 'EHOSTUNREACH'    , msg: 'host is unreachable' }
+SYSERR.EINTR             = SYSERR[ -4    ] = SYSERR[ 4    ] = { __proto__: null, errno: -4    , key: 'EINTR'           , msg: 'interrupted system call' }
+SYSERR.EINVAL            = SYSERR[ -22   ] = SYSERR[ 22   ] = { __proto__: null, errno: -22   , key: 'EINVAL'          , msg: 'invalid argument' }
+SYSERR.EIO               = SYSERR[ -5    ] = SYSERR[ 5    ] = { __proto__: null, errno: -5    , key: 'EIO'             , msg: 'i/o error' }
+SYSERR.EISCONN           = SYSERR[ -56   ] = SYSERR[ 56   ] = { __proto__: null, errno: -56   , key: 'EISCONN'         , msg: 'socket is already connected' }
+SYSERR.EISDIR            = SYSERR[ -21   ] = SYSERR[ 21   ] = { __proto__: null, errno: -21   , key: 'EISDIR'          , msg: 'illegal operation on a directory' }
+SYSERR.ELOOP             = SYSERR[ -62   ] = SYSERR[ 62   ] = { __proto__: null, errno: -62   , key: 'ELOOP'           , msg: 'too many symbolic links encountered' }
+SYSERR.EMFILE            = SYSERR[ -24   ] = SYSERR[ 24   ] = { __proto__: null, errno: -24   , key: 'EMFILE'          , msg: 'too many open files' }
+SYSERR.EMSGSIZE          = SYSERR[ -40   ] = SYSERR[ 40   ] = { __proto__: null, errno: -40   , key: 'EMSGSIZE'        , msg: 'message too long' }
+SYSERR.ENAMETOOLONG      = SYSERR[ -63   ] = SYSERR[ 63   ] = { __proto__: null, errno: -63   , key: 'ENAMETOOLONG'    , msg: 'name too long' }
+SYSERR.ENETDOWN          = SYSERR[ -50   ] = SYSERR[ 50   ] = { __proto__: null, errno: -50   , key: 'ENETDOWN'        , msg: 'network is down' }
+SYSERR.ENETUNREACH       = SYSERR[ -51   ] = SYSERR[ 51   ] = { __proto__: null, errno: -51   , key: 'ENETUNREACH'     , msg: 'network is unreachable' }
+SYSERR.ENFILE            = SYSERR[ -23   ] = SYSERR[ 23   ] = { __proto__: null, errno: -23   , key: 'ENFILE'          , msg: 'file table overflow' }
+SYSERR.ENOBUFS           = SYSERR[ -55   ] = SYSERR[ 55   ] = { __proto__: null, errno: -55   , key: 'ENOBUFS'         , msg: 'no buffer space available' }
+SYSERR.ENODEV            = SYSERR[ -19   ] = SYSERR[ 19   ] = { __proto__: null, errno: -19   , key: 'ENODEV'          , msg: 'no such device' }
+SYSERR.ENOENT            = SYSERR[ -2    ] = SYSERR[ 2    ] = { __proto__: null, errno: -2    , key: 'ENOENT'          , msg: 'no such file or directory' }
+SYSERR.ENOMEM            = SYSERR[ -12   ] = SYSERR[ 12   ] = { __proto__: null, errno: -12   , key: 'ENOMEM'          , msg: 'not enough memory' }
+SYSERR.ENONET            = SYSERR[ -4056 ] = SYSERR[ 4056 ] = { __proto__: null, errno: -4056 , key: 'ENONET'          , msg: 'machine is not on the network' }
+SYSERR.ENOPROTOOPT       = SYSERR[ -42   ] = SYSERR[ 42   ] = { __proto__: null, errno: -42   , key: 'ENOPROTOOPT'     , msg: 'protocol not available' }
+SYSERR.ENOSPC            = SYSERR[ -28   ] = SYSERR[ 28   ] = { __proto__: null, errno: -28   , key: 'ENOSPC'          , msg: 'no space left on device' }
+SYSERR.ENOSYS            = SYSERR[ -78   ] = SYSERR[ 78   ] = { __proto__: null, errno: -78   , key: 'ENOSYS'          , msg: 'function not implemented' }
+SYSERR.ENOTCONN          = SYSERR[ -57   ] = SYSERR[ 57   ] = { __proto__: null, errno: -57   , key: 'ENOTCONN'        , msg: 'socket is not connected' }
+SYSERR.ENOTDIR           = SYSERR[ -20   ] = SYSERR[ 20   ] = { __proto__: null, errno: -20   , key: 'ENOTDIR'         , msg: 'not a directory' }
+SYSERR.ENOTEMPTY         = SYSERR[ -66   ] = SYSERR[ 66   ] = { __proto__: null, errno: -66   , key: 'ENOTEMPTY'       , msg: 'directory not empty' }
+SYSERR.ENOTSOCK          = SYSERR[ -38   ] = SYSERR[ 38   ] = { __proto__: null, errno: -38   , key: 'ENOTSOCK'        , msg: 'socket operation on non-socket' }
+SYSERR.ENOTSUP           = SYSERR[ -45   ] = SYSERR[ 45   ] = { __proto__: null, errno: -45   , key: 'ENOTSUP'         , msg: 'operation not supported on socket' }
+SYSERR.EOVERFLOW         = SYSERR[ -84   ] = SYSERR[ 84   ] = { __proto__: null, errno: -84   , key: 'EOVERFLOW'       , msg: 'value too large for defined data type' }
+SYSERR.EPERM             = SYSERR[ -1    ] = SYSERR[ 1    ] = { __proto__: null, errno: -1    , key: 'EPERM'           , msg: 'operation not permitted' }
+SYSERR.EPIPE             = SYSERR[ -32   ] = SYSERR[ 32   ] = { __proto__: null, errno: -32   , key: 'EPIPE'           , msg: 'broken pipe' }
+SYSERR.EPROTO            = SYSERR[ -100  ] = SYSERR[ 100  ] = { __proto__: null, errno: -100  , key: 'EPROTO'          , msg: 'protocol error' }
+SYSERR.EPROTONOSUPPORT   = SYSERR[ -43   ] = SYSERR[ 43   ] = { __proto__: null, errno: -43   , key: 'EPROTONOSUPPORT' , msg: 'protocol not supported' }
+SYSERR.EPROTOTYPE        = SYSERR[ -41   ] = SYSERR[ 41   ] = { __proto__: null, errno: -41   , key: 'EPROTOTYPE'      , msg: 'protocol wrong type for socket' }
+SYSERR.ERANGE            = SYSERR[ -34   ] = SYSERR[ 34   ] = { __proto__: null, errno: -34   , key: 'ERANGE'          , msg: 'result too large' }
+SYSERR.EROFS             = SYSERR[ -30   ] = SYSERR[ 30   ] = { __proto__: null, errno: -30   , key: 'EROFS'           , msg: 'read-only file system' }
+SYSERR.ESHUTDOWN         = SYSERR[ -58   ] = SYSERR[ 58   ] = { __proto__: null, errno: -58   , key: 'ESHUTDOWN'       , msg: 'cannot send after transport endpoint shutdown' }
+SYSERR.ESPIPE            = SYSERR[ -29   ] = SYSERR[ 29   ] = { __proto__: null, errno: -29   , key: 'ESPIPE'          , msg: 'invalid seek' }
+SYSERR.ESRCH             = SYSERR[ -3    ] = SYSERR[ 3    ] = { __proto__: null, errno: -3    , key: 'ESRCH'           , msg: 'no such process' }
+SYSERR.ETIMEDOUT         = SYSERR[ -60   ] = SYSERR[ 60   ] = { __proto__: null, errno: -60   , key: 'ETIMEDOUT'       , msg: 'connection timed out' }
+SYSERR.ETXTBSY           = SYSERR[ -26   ] = SYSERR[ 26   ] = { __proto__: null, errno: -26   , key: 'ETXTBSY'         , msg: 'text file is busy' }
+SYSERR.EXDEV             = SYSERR[ -18   ] = SYSERR[ 18   ] = { __proto__: null, errno: -18   , key: 'EXDEV'           , msg: 'cross-device link not permitted' }
+SYSERR.UNKNOWN           = SYSERR[ -4094 ] = SYSERR[ 4094 ] = { __proto__: null, errno: -4094 , key: 'UNKNOWN'         , msg: 'unknown error' }
+SYSERR.EOF               = SYSERR[ -4095 ] = SYSERR[ 4095 ] = { __proto__: null, errno: -4095 , key: 'EOF'             , msg: 'end of file' }
+SYSERR.ENXIO             = SYSERR[ -6    ] = SYSERR[ 6    ] = { __proto__: null, errno: -6    , key: 'ENXIO'           , msg: 'no such device or address' }
+SYSERR.EMLINK            = SYSERR[ -31   ] = SYSERR[ 31   ] = { __proto__: null, errno: -31   , key: 'EMLINK'          , msg: 'too many links' }
+SYSERR.EHOSTDOWN         = SYSERR[ -64   ] = SYSERR[ 64   ] = { __proto__: null, errno: -64   , key: 'EHOSTDOWN'       , msg: 'host is down' }
+SYSERR.EREMOTEIO         = SYSERR[ -4030 ] = SYSERR[ 4030 ] = { __proto__: null, errno: -4030 , key: 'EREMOTEIO'       , msg: 'remote I/O error' }
+SYSERR.ENOTTY            = SYSERR[ -25   ] = SYSERR[ 25   ] = { __proto__: null, errno: -25   , key: 'ENOTTY'          , msg: 'inappropriate ioctl for device' }
+SYSERR.EFTYPE            = SYSERR[ -79   ] = SYSERR[ 79   ] = { __proto__: null, errno: -79   , key: 'EFTYPE'          , msg: 'inappropriate file type or format' }
+SYSERR.EILSEQ            = SYSERR[ -92   ] = SYSERR[ 92   ] = { __proto__: null, errno: -92   , key: 'EILSEQ'          , msg: 'illegal byte sequence' }
+SYSERR.ESOCKTNOSUPPORT   = SYSERR[ -44   ] = SYSERR[ 44   ] = { __proto__: null, errno: -44   , key: 'ESOCKTNOSUPPORT' , msg: 'socket type not supported' }
+SYSERR.ENODATA           = SYSERR[ -96   ] = SYSERR[ 96   ] = { __proto__: null, errno: -96   , key: 'ENODATA'         , msg: 'no data available' }
+SYSERR.EUNATCH           = SYSERR[ -4023 ] = SYSERR[ 4023 ] = { __proto__: null, errno: -4023 , key: 'EUNATCH'         , msg: 'protocol driver not attached' }
+SYSERR.ENOEXEC           = SYSERR[ -8    ] = SYSERR[ 8    ] = { __proto__: null, errno: -8    , key: 'ENOEXEC'         , msg: 'exec format error' }
+
+export const METHOD = new Set([
+    'ACL',
+    'BASELINE-CONTROL',
+    'BIND',
+    'CHECKIN',
+    'CHECKOUT',
+    'CONNECT',
+    'COPY',
+    'DELETE',
+    'GET',
+    'HEAD',
+    'LABEL',
+    'LINK',
+    'LOCK',
+    'MERGE',
+    'MKACTIVITY',
+    'MKCALENDAR',
+    'MKCOL',
+    'MKREDIRECTREF',
+    'MKWORKSPACE',
+    'MOVE',
+    'OPTIONS',
+    'ORDERPATCH',
+    'PATCH',
+    'POST',
+    'PRI',
+    'PROPFIND',
+    'PROPPATCH',
+    'PUT',
+    'REBIND',
+    'REPORT',
+    'SEARCH',
+    'TRACE',
+    'UNBIND',
+    'UNCHECKOUT',
+    'UNLINK',
+    'UNLOCK',
+    'UPDATE',
+    'UPDATEREDIRECTREF',
+    'VERSION-CONTROL',
+])
+
+export const HEADER = {
+    STATUS                          : ':status',
+    METHOD                          : ':method',
+    AUTHORITY                       : ':authority',
+    SCHEME                          : ':scheme',
+    PATH                            : ':path',
+    PROTOCOL                        : ':protocol',
+    ACCEPT_ENCODING                 : 'accept-encoding',
+    ACCEPT_LANGUAGE                 : 'accept-language',
+    ACCEPT_RANGES                   : 'accept-ranges',
+    ACCEPT                          : 'accept',
+    ACCESS_CONTROL_ALLOW_CREDENTIALS: 'access-control-allow-credentials',
+    ACCESS_CONTROL_ALLOW_HEADERS    : 'access-control-allow-headers',
+    ACCESS_CONTROL_ALLOW_METHODS    : 'access-control-allow-methods',
+    ACCESS_CONTROL_ALLOW_ORIGIN     : 'access-control-allow-origin',
+    ACCESS_CONTROL_EXPOSE_HEADERS   : 'access-control-expose-headers',
+    ACCESS_CONTROL_REQUEST_HEADERS  : 'access-control-request-headers',
+    ACCESS_CONTROL_REQUEST_METHOD   : 'access-control-request-method',
+    AGE                             : 'age',
+    AUTHORIZATION                   : 'authorization',
+    CACHE_CONTROL                   : 'cache-control',
+    CONNECTION                      : 'connection',
+    CONTENT_DISPOSITION             : 'content-disposition',
+    CONTENT_ENCODING                : 'content-encoding',
+    CONTENT_LENGTH                  : 'content-length',
+    CONTENT_TYPE                    : 'content-type',
+    COOKIE                          : 'cookie',
+    DATE                            : 'date',
+    ETAG                            : 'etag',
+    FORWARDED                       : 'forwarded',
+    HOST                            : 'host',
+    IF_MODIFIED_SINCE               : 'if-modified-since',
+    IF_NONE_MATCH                   : 'if-none-match',
+    IF_RANGE                        : 'if-range',
+    LAST_MODIFIED                   : 'last-modified',
+    LINK                            : 'link',
+    LOCATION                        : 'location',
+    RANGE                           : 'range',
+    REFERER                         : 'referer',
+    SERVER                          : 'server',
+    SET_COOKIE                      : 'set-cookie',
+    STRICT_TRANSPORT_SECURITY       : 'strict-transport-security',
+    TRANSFER_ENCODING               : 'transfer-encoding',
+    TE                              : 'te',
+    UPGRADE_INSECURE_REQUESTS       : 'upgrade-insecure-requests',
+    UPGRADE                         : 'upgrade',
+    USER_AGENT                      : 'user-agent',
+    VARY                            : 'vary',
+    X_CONTENT_TYPE_OPTIONS          : 'x-content-type-options',
+    X_FRAME_OPTIONS                 : 'x-frame-options',
+    KEEP_ALIVE                      : 'keep-alive',
+    PROXY_CONNECTION                : 'proxy-connection',
+    X_XSS_PROTECTION                : 'x-xss-protection',
+    ALT_SVC                         : 'alt-svc',
+    CONTENT_SECURITY_POLICY         : 'content-security-policy',
+    EARLY_DATA                      : 'early-data',
+    EXPECT_CT                       : 'expect-ct',
+    ORIGIN                          : 'origin',
+    PURPOSE                         : 'purpose',
+    TIMING_ALLOW_ORIGIN             : 'timing-allow-origin',
+    X_FORWARDED_FOR                 : 'x-forwarded-for',
+    PRIORITY                        : 'priority',
+    ACCEPT_CHARSET                  : 'accept-charset',
+    ACCESS_CONTROL_MAX_AGE          : 'access-control-max-age',
+    ALLOW                           : 'allow',
+    CONTENT_LANGUAGE                : 'content-language',
+    CONTENT_LOCATION                : 'content-location',
+    CONTENT_MD5                     : 'content-md5',
+    CONTENT_RANGE                   : 'content-range',
+    DNT                             : 'dnt',
+    EXPECT                          : 'expect',
+    EXPIRES                         : 'expires',
+    FROM                            : 'from',
+    IF_MATCH                        : 'if-match',
+    IF_UNMODIFIED_SINCE             : 'if-unmodified-since',
+    MAX_FORWARDS                    : 'max-forwards',
+    PREFER                          : 'prefer',
+    PROXY_AUTHENTICATE              : 'proxy-authenticate',
+    PROXY_AUTHORIZATION             : 'proxy-authorization',
+    REFRESH                         : 'refresh',
+    RETRY_AFTER                     : 'retry-after',
+    TRAILER                         : 'trailer',
+    TK                              : 'tk',
+    VIA                             : 'via',
+    WARNING                         : 'warning',
+    WWW_AUTHENTICATE                : 'www-authenticate',
+    HTTP2_SETTINGS                  : 'http2-settings',
+    __proto__                       : null,
+}
+
+export const STATUS = {
+    CONTINUE                       : 100, 100                            : 'continue',
+    SWITCHING_PROTOCOLS            : 101, 101                            : 'switching protocols',
+    PROCESSING                     : 102, 102                            : 'processing',
+    EARLY_HINTS                    : 103, 103                            : 'early hints',
+    OK                             : 200, 200                            : 'ok',
+    CREATED                        : 201, 201                            : 'created',
+    ACCEPTED                       : 202, 202                            : 'accepted',
+    NON_AUTHORITATIVE_INFORMATION  : 203, 203                            : 'non authoritative information',
+    NO_CONTENT                     : 204, 204                            : 'no content',
+    RESET_CONTENT                  : 205, 205                            : 'reset content',
+    PARTIAL_CONTENT                : 206, 206                            : 'partial content',
+    MULTI_STATUS                   : 207, 207                            : 'multi status',
+    ALREADY_REPORTED               : 208, 208                            : 'already reported',
+    IM_USED                        : 226, 226                            : 'im used',
+    MULTIPLE_CHOICES               : 300, 300                            : 'multiple choices',
+    MOVED_PERMANENTLY              : 301, 301                            : 'moved permanently',
+    FOUND                          : 302, 302                            : 'found',
+    SEE_OTHER                      : 303, 303                            : 'see other',
+    NOT_MODIFIED                   : 304, 304                            : 'not modified',
+    USE_PROXY                      : 305, 305                            : 'use proxy',
+    TEMPORARY_REDIRECT             : 307, 307                            : 'temporary redirect',
+    PERMANENT_REDIRECT             : 308, 308                            : 'permanent redirect',
+    BAD_REQUEST                    : 400, 400                            : 'bad request',
+    UNAUTHORIZED                   : 401, 401                            : 'unauthorized',
+    PAYMENT_REQUIRED               : 402, 402                            : 'payment required',
+    FORBIDDEN                      : 403, 403                            : 'forbidden',
+    NOT_FOUND                      : 404, 404                            : 'not found',
+    METHOD_NOT_ALLOWED             : 405, 405                            : 'method not allowed',
+    NOT_ACCEPTABLE                 : 406, 406                            : 'not acceptable',
+    PROXY_AUTHENTICATION_REQUIRED  : 407, 407                            : 'proxy authentication required',
+    REQUEST_TIMEOUT                : 408, 408                            : 'request timeout',
+    CONFLICT                       : 409, 409                            : 'conflict',
+    GONE                           : 410, 410                            : 'gone',
+    LENGTH_REQUIRED                : 411, 411                            : 'length required',
+    PRECONDITION_FAILED            : 412, 412                            : 'precondition failed',
+    PAYLOAD_TOO_LARGE              : 413, 413                            : 'payload too large',
+    URI_TOO_LONG                   : 414, 414                            : 'uri too long',
+    UNSUPPORTED_MEDIA_TYPE         : 415, 415                            : 'unsupported media type',
+    RANGE_NOT_SATISFIABLE          : 416, 416                            : 'range not satisfiable',
+    EXPECTATION_FAILED             : 417, 417                            : 'expectation failed',
+    TEAPOT                         : 418, 418                            : 'teapot',
+    MISDIRECTED_REQUEST            : 421, 421                            : 'misdirected request',
+    UNPROCESSABLE_ENTITY           : 422, 422                            : 'unprocessable entity',
+    LOCKED                         : 423, 423                            : 'locked',
+    FAILED_DEPENDENCY              : 424, 424                            : 'failed dependency',
+    TOO_EARLY                      : 425, 425                            : 'too early',
+    UPGRADE_REQUIRED               : 426, 426                            : 'upgrade required',
+    PRECONDITION_REQUIRED          : 428, 428                            : 'precondition required',
+    TOO_MANY_REQUESTS              : 429, 429                            : 'too many requests',
+    REQUEST_HEADER_FIELDS_TOO_LARGE: 431, 431                            : 'request header fields too large',
+    UNAVAILABLE_FOR_LEGAL_REASONS  : 451, 451                            : 'unavailable for legal reasons',
+    INTERNAL_SERVER_ERROR          : 500, 500                            : 'internal server error',
+    NOT_IMPLEMENTED                : 501, 501                            : 'not implemented',
+    BAD_GATEWAY                    : 502, 502                            : 'bad gateway',
+    SERVICE_UNAVAILABLE            : 503, 503                            : 'service unavailable',
+    GATEWAY_TIMEOUT                : 504, 504                            : 'gateway timeout',
+    HTTP_VERSION_NOT_SUPPORTED     : 505, 505                            : 'http version not supported',
+    VARIANT_ALSO_NEGOTIATES        : 506, 506                            : 'variant also negotiates',
+    INSUFFICIENT_STORAGE           : 507, 507                            : 'insufficient storage',
+    LOOP_DETECTED                  : 508, 508                            : 'loop detected',
+    BANDWIDTH_LIMIT_EXCEEDED       : 509, 509                            : 'bandwidth limit exceeded',
+    NOT_EXTENDED                   : 510, 510                            : 'not extended',
+    NETWORK_AUTHENTICATION_REQUIRED: 511, 511                            : 'network authentication required',
+    __proto__                      : null,
+}
+
+export default {
+    400      : 'bad request',
+    401      : 'unauthorized',
+    402      : 'payment required',
+    403      : 'forbidden',
+    404      : 'not found',
+    405      : 'method not allowed',
+    406      : 'not acceptable',
+    407      : 'proxy authentication required',
+    408      : 'request timeout',
+    409      : 'conflict',
+    410      : 'gone',
+    411      : 'length required',
+    412      : 'precondition failed',
+    413      : 'payload too large',
+    414      : 'uri too long',
+    415      : 'unsupported media type',
+    416      : 'range not satisfiable',
+    417      : 'expectation failed',
+    418      : 'teapot',
+    421      : 'misdirected request',
+    422      : 'unprocessable entity',
+    423      : 'locked',
+    424      : 'failed dependency',
+    425      : 'too early',
+    426      : 'upgrade required',
+    428      : 'precondition required',
+    429      : 'too many requests',
+    431      : 'request header fields too large',
+    451      : 'unavailable for legal reasons',
+    500      : 'internal server error',
+    501      : 'not implemented',
+    502      : 'bad gateway',
+    503      : 'service unavailable',
+    504      : 'gateway timeout',
+    505      : 'http version not supported',
+    506      : 'variant also negotiates',
+    507      : 'insufficient storage',
+    508      : 'loop detected',
+    509      : 'bandwidth limit exceeded',
+    510      : 'not extended',
+    511      : 'network authentication required',
+    __proto__: null,
+}
