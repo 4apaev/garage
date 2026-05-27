@@ -10,7 +10,8 @@ import compose from './compose.js'
 import use     from './use.js'
 
 export class Router extends EventEmitter {
-    handler
+    /** @type {import('./types.js').MWare} */
+    middleware
     mware = []
     options = {
         cwd : process.cwd(),
@@ -22,21 +23,46 @@ export class Router extends EventEmitter {
     constructor(opt) {
         super()
         opt && Object.assign(this.options, opt)
+
+        if (opt?.onerror)
+            this.onerror = opt.onerror.bind(this)
     }
 
     use() {
+        this.server
+            && Fail.raise(500, 'router already initialized')
+
+        this.middleware = void 0
         this.mware.push(use.apply(this, arguments))
-        this.handler = void 0
         return this
     }
 
-    handle(rq, rs) {
-        this.handler ??= compose(this.mware).bind(this)
-        return this.handler(rq, rs)
+    onerror = (e, rq, rs, app) => {
+        app.listenerCount('error')
+            && app.emit('error', e, rq, rs)
+
+        if (rs.headersSent)
+            return
+
+        rs.status = e.code
+        rs.type = MIME.txt
+        return rs.end(e.message)
+    }
+
+    request = async (rq, rs) => {
+        try {
+            let r = await this.middleware(rq, rs)
+            return r
+        }
+        catch (e) {
+            return this.onerror(Fail.from(e), rq, rs, this)
+        }
     }
 
     init() {
-        return this.server = create(this.handle.bind(this))
+        this.middleware = compose(this.mware).bind(this)
+        this.server ??= create(this.request)
+        return this.server
     }
 
     listen(port = this.options.port) {
@@ -93,7 +119,7 @@ export class Req extends Http.IncomingMessage {
                     : void 0
             }
             catch (e) {
-                this.error = new Fail(400, e.message, e)
+                this.error = Fail.from(e, 400)
             }
         }
         else if (this.type.includes('text/')) {
@@ -142,7 +168,8 @@ export class Res extends Http.ServerResponse {
             return this
         }
         catch (e) {
-            console.error(this.status = 404, path, this.error = new Fail(404, e.message, e))
+            this.status = 404
+            this.error = Fail.from(e, 404)
             return this.end()
         }
         finally {
@@ -161,7 +188,8 @@ export class Res extends Http.ServerResponse {
         }
         if (Is(Readable, data)) {
             this.type ||= MIME.bin
-            return data.pipe(this), this
+            data.pipe(this)
+            return this
         }
         if (Is.x(data))  {
             data = JSON.stringify(data)
@@ -172,7 +200,8 @@ export class Res extends Http.ServerResponse {
             this.type ||= MIME.txt
             this.size ||= Buffer.byteLength(data)
         }
-        return this.end(data), this
+        this.end(data)
+        return this
     }
 }
 

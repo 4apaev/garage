@@ -225,7 +225,7 @@ describe('util', () => {
                 const e = Fail[ c ]
                 assrt.ok(e instanceof Fail)
                 assrt.equal(e.name   , 'Fail')
-                assrt.equal(e.code   ,  c)
+                assrt.equal(e.code   ,  +c)
                 assrt.equal(e.message,  m.toLowerCase())
             })
         })

@@ -130,13 +130,13 @@ export class Fail extends Error {
     code = 500
 
     constructor(code, msg, cause = code) {
-        Number.isInteger(code) || ([ code, msg ] = [ msg, code ])
+        isNaN(+code) && ([ code, msg ] = [ msg, code ])
         code ??= 500
         msg  ??= STATUS_CODES[ code ]
 
         super(msg, cause?.cause ? cause : { cause })
 
-        this.code = code
+        this.code = +code
         new.target.error = this
         new.target.captureStackTrace(this, new.target)
     }

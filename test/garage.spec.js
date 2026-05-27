@@ -7,7 +7,7 @@ import { once } from 'node:events'
 import { PassThrough, Writable } from 'node:stream'
 
 import { describe, it } from 'node:test'
-import { deepEqual, equal, ok } from 'node:assert/strict'
+import { deepEqual, equal, ok, throws } from 'node:assert/strict'
 
 import {
     Req,
@@ -112,22 +112,26 @@ describe('garage', () => {
         }
 
         app.get('/items/:id', (req, res) => res.json(200, { id: req.params.id }))
-
-        await app.handle(rq, rs)
+        app.init()
+        await app.request(rq, rs)
 
         equal(rs.status, 200)
         deepEqual(JSON.parse(rs.text()), { id: 'a b' })
     })
 
-    it('recomposes router middleware when routes are added', async () => {
+    it('freezes router middleware after initialization', async () => {
         const app = new Router
         const rs = new MockRes
 
         app.get('/first', (req, res, next) => next())
-        await app.handle(request('/first'), rs)
-
         app.get('/second', (req, res) => res.send(201, 'second'))
-        await app.handle(request('/second'), rs)
+
+        app.init()
+
+        throws(() => app.get('/late', () => {}), /router already initialized/)
+
+        await app.request(request('/first'), rs)
+        await app.request(request('/second'), rs)
 
         equal(rs.status, 201)
         equal(rs.body, 'second')
@@ -142,10 +146,12 @@ describe('garage', () => {
         app.patch('/items/:id', rq => seen.push([ rq.method, rq.params.id ]))
         app.del('/items/:id', rq => seen.push([ rq.method, rq.params.id ]))
 
-        await app.handle(request('/items/a', 'PUT'), new MockRes)
-        await app.handle(request('/items/b', 'POST'), new MockRes)
-        await app.handle(request('/items/c', 'PATCH'), new MockRes)
-        await app.handle(request('/items/d', 'DELETE'), new MockRes)
+        app.init()
+
+        await app.request(request('/items/a', 'PUT'), new MockRes)
+        await app.request(request('/items/b', 'POST'), new MockRes)
+        await app.request(request('/items/c', 'PATCH'), new MockRes)
+        await app.request(request('/items/d', 'DELETE'), new MockRes)
 
         deepEqual(seen, [
             [ 'PUT', 'a' ],
