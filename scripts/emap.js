@@ -71,11 +71,20 @@ const DIST = resolve(import.meta.dirname, '../src/errors.js')
 const OUT = `${ CODE.trim() }\n`
 
 if (process.argv.includes('--check')) {
-    if (readFileSync(DIST, 'utf8') !== OUT) {
+    const current = readFileSync(DIST, 'utf8')
+
+    if (stable(current) !== stable(OUT)) {
         console.error('src/errors.js is stale; run npm run emap')
         process.exitCode = 1
     }
 }
 else {
     writeFileSync(DIST, OUT)
+}
+
+function stable(code) {
+    return code.replace(
+        /const SYSERR = Object\.create\(null\)\n(?:SYSERR\..*\n)*/,
+        'const SYSERR = Object.create(null)\n',
+    )
 }
