@@ -1,4 +1,4 @@
-import STATUS_CODES from './errors.js'
+import { STATUS, STATUS_ERR } from './constants.js'
 
 export function echo(x) {
     return x
@@ -132,7 +132,7 @@ export class Fail extends Error {
     constructor(code, msg, cause = code) {
         isNaN(+code) && ([ code, msg ] = [ msg, code ])
         code ??= 500
-        msg  ??= STATUS_CODES[ code ]
+        msg  ??= STATUS[ code ]
 
         super(msg, cause?.cause ? cause : { cause })
 
@@ -232,6 +232,6 @@ export class O extends Object {
     }
 }
 
-each(STATUS_CODES, (k, m) => (k = +k) < 400
-    || O.use(Fail, {
-        get [ k ]() { return this.of(k, m.toLowerCase()) } }))
+each(STATUS_ERR, (k, m) => O.use(Fail, {
+    get [ k ]() { return this.of(k, m.toLowerCase()) },
+}))
