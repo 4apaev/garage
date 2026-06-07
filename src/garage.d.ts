@@ -10,25 +10,27 @@ import { Readable     } from 'node:stream'
 import type { MWare } from './types.js'
 import type { Fail } from './util.js'
 
-export interface RouterOptions {
+export interface GarageOptions {
     cwd? : string
     pid? : number
     port?: string | number
     name?: string
-    onerror?: (this: Router, e: Fail, rq: Req, rs: Res, app: Router) => unknown
+    onerror?: (this: Garage, e: Fail, rq: Req, rs: Res, app: Garage) => unknown
 }
 
-export default Router
-export class Router extends EventEmitter {
+export type RouterOptions = GarageOptions
+
+export default Garage
+export class Garage extends EventEmitter {
     middleware?: MWare
     mware: MWare[]
-    options: RouterOptions
+    options: GarageOptions
     server?: Server
 
-    constructor(opt?: RouterOptions)
+    constructor(opt?: GarageOptions)
     use(...args: Array<string | MWare>): this
-    onerror(e: Fail, rq: Req, rs: Res, app: Router): unknown
-    onrequest(rq: Req, rs: Res): Promise<unknown>
+    onerror(e: Fail, rq: Req, rs: Res, app: Garage): unknown
+    request(rq: Req, rs: Res): Promise<unknown>
     init(): Server
     listen(port?: string | number): void
     get(...args: Array<string | MWare>): this
@@ -37,11 +39,13 @@ export class Router extends EventEmitter {
     del(...args: Array<string | MWare>): this
     patch(...args: Array<string | MWare>): this
 
-    static of(opt?: RouterOptions): Router
+    static of(opt?: GarageOptions): Garage
     static create(listener?: (rq: Req, rs: Res) => unknown): Server
 }
 
-export const create: typeof Router.create
+export { Garage as Router }
+
+export const create: typeof Garage.create
 
 export class Req extends IncomingMessage {
     body?: unknown

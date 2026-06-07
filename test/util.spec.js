@@ -1,7 +1,10 @@
 import { describe, it } from 'node:test'
 import * as assrt       from 'node:assert/strict'
 
-import STATUS_CODES from '../src/errors.js'
+import {
+    STATUS,
+    STATUS_ERR,
+} from '../src/constants.js'
 import {
     A,
     Is,
@@ -220,8 +223,7 @@ describe('util', () => {
         })
 
         it('creates by static getters', async () => {
-
-            each(STATUS_CODES, (c, m) => {
+            each(STATUS_ERR, (c, m) => {
                 const e = Fail[ c ]
                 assrt.ok(e instanceof Fail)
                 assrt.equal(e.name   , 'Fail')

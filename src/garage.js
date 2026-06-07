@@ -9,7 +9,7 @@ import { Is, Fail, each } from './util.js'
 import compose from './compose.js'
 import use     from './use.js'
 
-export class Router extends EventEmitter {
+export class Garage extends EventEmitter {
     /** @type {import('./types.js').MWare} */
     middleware
     mware = []
@@ -30,7 +30,7 @@ export class Router extends EventEmitter {
 
     use() {
         this.server
-            && Fail.raise(500, 'router already initialized')
+            && Fail.raise(500, 'garage already initialized')
 
         this.middleware = void 0
         this.mware.push(use.apply(this, arguments))
@@ -205,5 +205,6 @@ export class Res extends Http.ServerResponse {
     }
 }
 
-export default Router
-export const { create } = Router
+export { Garage as Router }
+export default Garage
+export const { create } = Garage

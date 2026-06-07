@@ -19,6 +19,7 @@ describe('index', () => {
 
     it('keeps documented package subpaths importable', async () => {
         const compose = await import('garage/compose')
+        const constants = await import('garage/constants')
         const garage  = await import('garage/garage')
         const mime    = await import('garage/mime')
         const sync    = await import('garage/sync')
@@ -26,7 +27,10 @@ describe('index', () => {
         const util    = await import('garage/util')
 
         equal(compose.default, local.compose)
+        equal(constants.MIME.json, 'application/json')
         equal(garage.default, local.Garage)
+        equal(garage.Garage, local.Garage)
+        equal(garage.Router, local.Router)
         equal(mime.MIME.json, 'application/json')
         equal(sync.default.name, 'Sync')
         equal(use.default, local.use)

@@ -1,14 +1,14 @@
-import Router from './garage.js'
+import Garage from './garage.js'
 
 export {
+    Garage,
     Req,
     Res,
     Router,
-    default as Garage,
     create,
 } from './garage.js'
 
-export default Router
+export default Garage
 
 export { default as use } from './use.js'
 
