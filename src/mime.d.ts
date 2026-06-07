@@ -1,8 +1,10 @@
+import type { Mime } from './constants.js'
+
 export type THead =
     | { get(k: string): string | null | undefined }
     | { 'content-type'?: string | null | undefined }
 
-export const MIME: Record<string, string>
+export const MIME: Mime
 
 export function get(s: string): string | undefined
 export function get(s: string, fallback: string): string
