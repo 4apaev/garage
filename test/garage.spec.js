@@ -382,10 +382,12 @@ class MockRes extends Writable {
     setHeader(k, v)    { return this.hd[ k.toLowerCase() ] = v, this }
     removeHeader(k)    { return delete this.hd[ k.toLowerCase() ], this }
     appendHeader(k, v) { return this.hasHeader(k = k.toLowerCase()) ? (this.hd[ k ] = [].concat(this.hd[ k ], v).map(String), this) : this.setHeader(k, v) }
+    // test-only inspector: real responses are write-only from app code.
     text()             { return Buffer.concat(this.chunks).toString('utf8') }
     _write(x, _, next) { this.chunks.push(Buffer.from(x)), next() }
 }
 
+// keep the response helpers under test without requiring a real socket.
 Object.defineProperties(
     MockRes.prototype,
     Object.getOwnPropertyDescriptors(
