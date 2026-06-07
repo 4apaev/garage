@@ -72,9 +72,9 @@ function createMethodValidator(methods) {
 }
 
 /**
- * @typedef { import('./garage.js').Req       } Req
- * @typedef { import('./garage.js').Res       } Res
- * @typedef { import('./types.js').Next       } Next
- * @typedef { import('./types.js').Validator  } Validator
- * @typedef { import('./types.js').MWare      } MWare
+ * @typedef { import('garage').Req } Req
+ * @typedef { import('garage').Res } Res
+ * @typedef { import('garage').Next } Next
+ * @typedef { import('garage').Validator } Validator
+ * @typedef { import('garage').MWare } MWare
  */

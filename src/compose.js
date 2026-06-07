@@ -82,8 +82,8 @@ export default process.env.NODE_ENV === 'production'
     : composeDev
 
 /**
- * @typedef { import('./types.js').Next      } Next
- * @typedef { import('./types.js').MWare     } MWare
- * @typedef { import('./garage.js').Req      } Req
- * @typedef { import('./garage.js').Res      } Res
+ * @typedef { import('garage').Next } Next
+ * @typedef { import('garage').MWare } MWare
+ * @typedef { import('garage').Req } Req
+ * @typedef { import('garage').Res } Res
  */
