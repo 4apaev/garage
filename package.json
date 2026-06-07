@@ -1,33 +1,61 @@
 {
-    "name"        : "garage",
-    "version"     : "0.0.1",
-    "description" : "a small http server, router, and middleware toolkit",
-    "repository"  : "github:4apaev/garage",
-    "type"        : "module",
-    "main"        : "./src/index.js",
-    "types"       : "./src/types.d.ts",
-    "files"       : [ "src" ],
-    "engines"     : { "node": ">=24" },
+    "name": "garage",
+    "version": "0.1.0",
+    "description": "a small http server, router, and middleware toolkit",
+    "repository": "github:4apaev/garage",
+    "type": "module",
+    "main": "./src/index.js",
+    "types": "./src/types.d.ts",
+    "files": [
+        "src"
+    ],
+    "engines": {
+        "node": ">=24"
+    },
     "exports": {
-        "."          : { "types"  : "./src/types.d.ts" , "default": "./src/index.js"     },
-        "./constants": { "types"  : "./src/types.d.ts" , "default": "./src/constants.js" },
-        "./compose"  : { "types"  : "./src/types.d.ts" , "default": "./src/compose.js"   },
-        "./garage"   : { "types"  : "./src/types.d.ts" , "default": "./src/garage.js"    },
-        "./use"      : { "types"  : "./src/types.d.ts" , "default": "./src/use.js"       },
-        "./util"     : { "types"  : "./src/types.d.ts" , "default": "./src/util.js"      },
-        "./sync"     : { "types"  : "./src/types.d.ts" , "default": "./src/sync.js"      },
-        "./mime"     : { "types"  : "./src/types.d.ts" , "default": "./src/mime.js"      }
+        ".": {
+            "types": "./src/types.d.ts",
+            "default": "./src/index.js"
+        },
+        "./constants": {
+            "types": "./src/types.d.ts",
+            "default": "./src/constants.js"
+        },
+        "./compose": {
+            "types": "./src/types.d.ts",
+            "default": "./src/compose.js"
+        },
+        "./garage": {
+            "types": "./src/types.d.ts",
+            "default": "./src/garage.js"
+        },
+        "./use": {
+            "types": "./src/types.d.ts",
+            "default": "./src/use.js"
+        },
+        "./util": {
+            "types": "./src/types.d.ts",
+            "default": "./src/util.js"
+        },
+        "./sync": {
+            "types": "./src/types.d.ts",
+            "default": "./src/sync.js"
+        },
+        "./mime": {
+            "types": "./src/types.d.ts",
+            "default": "./src/mime.js"
+        }
     },
     "scripts": {
-        "test"      : "node --experimental-test-coverage --test ./test/*.spec.js",
-        "lint"      : "eslint .",
-        "tchk"      : "tsc --noEmit"
+        "test": "node --experimental-test-coverage --test ./test/*.spec.js",
+        "lint": "eslint .",
+        "tchk": "tsc --noEmit"
     },
     "devDependencies": {
-        "@eslint/js" : "^10.0.1",
+        "@eslint/js": "^10.0.1",
         "@types/node": "^25.9.2",
-        "eslint"     : "^10.4.1",
-        "globals"    : "^17.6.0",
-        "typescript" : "^6.0.3"
+        "eslint": "^10.4.1",
+        "globals": "^17.6.0",
+        "typescript": "^6.0.3"
     }
 }
