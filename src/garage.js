@@ -10,7 +10,7 @@ import compose from './compose.js'
 import use     from './use.js'
 
 export class Garage extends EventEmitter {
-    /** @type {import('./types.js').MWare} */
+    /** @type {import('garage').MWare} */
     middleware
     mware = []
     options = {
