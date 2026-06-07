@@ -10,11 +10,12 @@ import { describe, it } from 'node:test'
 import { deepEqual, equal, ok, throws } from 'node:assert/strict'
 
 import {
+    Garage,
     Req,
     Res,
-    Router,
     create,
 } from '../src/index.js'
+import { Fail } from '../src/util.js'
 
 describe('garage', () => {
     it('creates a node http server with garage request and response classes', () => {
@@ -31,10 +32,10 @@ describe('garage', () => {
         equal(typeof Res.prototype.json, 'function')
     })
 
-    it('constructs routers with options and helper factories', () => {
-        const app = Router.of({ name: 'shop', port: 0 })
+    it('constructs garage apps with options and helper factories', () => {
+        const app = Garage.of({ name: 'shop', port: 0 })
 
-        ok(app instanceof Router)
+        ok(app instanceof Garage)
         equal(app.options.name, 'shop')
         equal(app.options.port, 0)
 
@@ -46,7 +47,7 @@ describe('garage', () => {
     })
 
     it('listens on the configured port and reports options', () => {
-        const app = new Router({ name: 'shop', port: 1234 })
+        const app = new Garage({ name: 'shop', port: 1234 })
         const table = console.table
         let port, reported
 
@@ -72,7 +73,7 @@ describe('garage', () => {
     })
 
     it('listens on the configured port and reports options', t => {
-        const app = new Router({ name: 'shop', port: 1234 })
+        const app = new Garage({ name: 'shop', port: 1234 })
         let port
 
         t.mock.method(console, 'table')
@@ -102,7 +103,7 @@ describe('garage', () => {
     })
 
     it('routes by method and url pattern', async () => {
-        const app = new Router
+        const app = new Garage
         const rs = new MockRes
         const rq = {
             method: 'GET',
@@ -119,8 +120,8 @@ describe('garage', () => {
         deepEqual(JSON.parse(rs.text()), { id: 'a b' })
     })
 
-    it('freezes router middleware after initialization', async () => {
-        const app = new Router
+    it('freezes garage middleware after initialization', async () => {
+        const app = new Garage
         const rs = new MockRes
 
         app.get('/first', (req, res, next) => next())
@@ -128,7 +129,7 @@ describe('garage', () => {
 
         app.init()
 
-        throws(() => app.get('/late', () => {}), /router already initialized/)
+        throws(() => app.get('/late', () => {}), /garage already initialized/)
 
         await app.request(request('/first'), rs)
         await app.request(request('/second'), rs)
@@ -137,8 +138,54 @@ describe('garage', () => {
         equal(rs.body, 'second')
     })
 
+    it('handles errors through the default onerror hook', () => {
+        const app = new Garage
+        const rq = request('/missing')
+        const rs = new MockRes
+        const err = Fail.of(404, 'missing')
+        let event
+
+        app.on('error', (e, req, res) => {
+            event = { e, req, res }
+        })
+
+        app.onerror(err, rq, rs, app)
+
+        equal(event.e, err)
+        equal(event.req, rq)
+        equal(event.res, rs)
+        equal(rs.status, 404)
+        equal(rs.type, 'text/plain')
+        equal(rs.text(), 'missing')
+    })
+
+    it('passes request failures to onerror', async () => {
+        const app = new Garage
+        const rq = request('/boom')
+        const rs = new MockRes
+        const root = new Error('boom')
+        let seen
+
+        app.use(() => {
+            throw root
+        })
+        app.onerror = (e, req, res, ctx) => {
+            seen = { e, req, res, ctx }
+            return 'handled'
+        }
+        app.init()
+
+        equal(await app.request(rq, rs), 'handled')
+        equal(seen.e.code, 500)
+        equal(seen.e.message, 'boom')
+        equal(seen.e.cause, root)
+        equal(seen.req, rq)
+        equal(seen.res, rs)
+        equal(seen.ctx, app)
+    })
+
     it('routes through verb helpers', async () => {
-        const app = new Router
+        const app = new Garage
         const seen = []
 
         app.put('/items/:id', rq => seen.push([ rq.method, rq.params.id ]))
