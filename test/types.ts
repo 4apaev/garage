@@ -2,7 +2,6 @@ import Garage, {
     type MWare,
     Req,
     Res,
-    Router,
     compose,
     use,
 } from 'garage'
@@ -15,13 +14,13 @@ import { fromPath             } from 'garage/mime'
 import composeSubpath           from 'garage/compose'
 import useSubpath               from 'garage/use'
 
-const app: Garage = new Router({ name: 'typed' })
+const app: Garage = new Garage({ name: 'typed' })
 const mw: MWare = (_rq: Req, rs: Res) => rs.send(200, 'ok')
 
 app.get('/x', mw)
 
 const defaulted: Garage = new garage.default
-const created: ReturnType<typeof Garage.create> = garage.create()
+const created: ReturnType<typeof Garage.create> = Garage.create()
 const payload: Promise<Payload<{ ok: true }>> = Sync.get<{ ok: true }>('/').end()
 
 const json: 'application/json' = MIME.json

@@ -20,8 +20,6 @@ declare module 'garage' {
         onerror?: (this: Garage, e: Fail, rq: Req, rs: Res, app: Garage) => unknown
     }
 
-    export type RouterOptions = GarageOptions
-
     export class Garage extends EventEmitter {
         middleware?: MWare
         mware: MWare[]
@@ -44,9 +42,7 @@ declare module 'garage' {
         static create(listener?: (rq: Req, rs: Res) => unknown): Server
     }
 
-    export { Garage as Router }
     export default Garage
-    export const create: typeof Garage.create
 
     export class Req extends IncomingMessage {
         body?: unknown
@@ -90,8 +86,6 @@ declare module 'garage' {
     export { default as use } from 'garage/use'
 
     export {
-        composeDev,
-        composeProd,
         default as compose,
     } from 'garage/compose'
 }
@@ -101,13 +95,10 @@ declare module 'garage/garage' {
         Garage,
         Req,
         Res,
-        Router,
-        create,
         default,
     } from 'garage'
     export type {
         GarageOptions,
-        RouterOptions,
     } from 'garage'
 }
 
@@ -421,28 +412,6 @@ declare module 'garage/util' {
 
         static no(x: unknown, msg?: string, cause?: unknown): false
         static no(x: unknown, code: number, msg?: string, cause?: unknown): false
-
-        static get [ 400 ](): Fail;  static get [ 423 ](): Fail
-        static get [ 401 ](): Fail;  static get [ 424 ](): Fail
-        static get [ 402 ](): Fail;  static get [ 425 ](): Fail
-        static get [ 403 ](): Fail;  static get [ 426 ](): Fail
-        static get [ 404 ](): Fail;  static get [ 428 ](): Fail
-        static get [ 405 ](): Fail;  static get [ 429 ](): Fail
-        static get [ 406 ](): Fail;  static get [ 431 ](): Fail
-        static get [ 407 ](): Fail;  static get [ 451 ](): Fail
-        static get [ 408 ](): Fail;  static get [ 500 ](): Fail
-        static get [ 409 ](): Fail;  static get [ 501 ](): Fail
-        static get [ 410 ](): Fail;  static get [ 502 ](): Fail
-        static get [ 411 ](): Fail;  static get [ 503 ](): Fail
-        static get [ 412 ](): Fail;  static get [ 504 ](): Fail
-        static get [ 413 ](): Fail;  static get [ 505 ](): Fail
-        static get [ 414 ](): Fail;  static get [ 506 ](): Fail
-        static get [ 415 ](): Fail;  static get [ 507 ](): Fail
-        static get [ 416 ](): Fail;  static get [ 508 ](): Fail
-        static get [ 417 ](): Fail;  static get [ 509 ](): Fail
-        static get [ 418 ](): Fail;  static get [ 510 ](): Fail
-        static get [ 421 ](): Fail;  static get [ 511 ](): Fail
-        static get [ 422 ](): Fail
     }
 
     export class O extends Object {
