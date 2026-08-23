@@ -1,4 +1,4 @@
-import { STATUS, STATUS_ERR } from './constants.js'
+import { STATUS } from './constants.js'
 
 export function echo(x) {
     return x
@@ -18,7 +18,7 @@ export function each(x, fx, ctx) {
     return ctx
 }
 
-//──────────────────────────────────────────────────────────────────────────────────────────
+//──────────────────────────────────────────────────────────────────────────────
 
 export class A extends Array {
     get head() { return this[ 0 ]   }
@@ -78,7 +78,7 @@ export class A extends Array {
     }
 }
 
-//──────────────────────────────────────────────────────────────────────────────────────────
+//──────────────────────────────────────────────────────────────────────────────
 
 export function random(a, b) {
     return a == null
@@ -89,7 +89,7 @@ export function random(a, b) {
 }
 random.valueOf = Math.random
 
-//──────────────────────────────────────────────────────────────────────────────────────────
+//──────────────────────────────────────────────────────────────────────────────
 
 export function Is(...a) {
     return Is[ 'uuI'[ a.length ] ?? 'any' ](...a)
@@ -98,14 +98,10 @@ export function Is(...a) {
 {
     const T = Is.t = x => toString.call(x).slice(8, -1)
 
-    //──────────────────────────────────────────────────────────────────────────────────────────
-    const Buffer = globalThis.Buffer || { isBuffer: x => /\d+array$|buffer/i.test(T(x)) }
-    //──────────────────────────────────────────────────────────────────────────────────────────
-
     Is.n = Number.isFinite
     Is.N = Number.isInteger
     Is.a = Array.isArray
-    Is.B = Buffer.isBuffer
+    Is.B = globalThis.Buffer?.isBuffer ?? globalThis.ArrayBuffer.isView
     Is.p = x => Is(Promise, x) || Is.f(x?.then)
     Is.u = x => x != null
     Is.x = x => Object(x) === x
@@ -125,40 +121,47 @@ export function Is(...a) {
     })
 }
 
+//──────────────────────────────────────────────────────────────────────────────
+
 export class Fail extends Error {
     name = 'Fail'
-    code = 500
 
-    constructor(code, msg, cause = code) {
-        isNaN(+code) && ([ code, msg ] = [ msg, code ])
-        code ??= 500
-        msg  ??= STATUS[ code ]
+    constructor() {
+        let [ code, mssg, cause, start ] = new.target.parse(arguments)
 
-        super(msg, cause?.cause ? cause : { cause })
+        super(mssg, cause?.cause ? cause : { cause })
 
-        this.code = +code
-        new.target.error = this
-        new.target.captureStackTrace(this, new.target)
+        this.code = code
+        new.target.captureStackTrace(this, start ?? new.target)
     }
 
-    static of() { return Reflect.construct(this, arguments) }
+    static is(x)         { return this[ Symbol.hasInstance ](x) }
+    static from(e, code) { return this.of(code ?? e.code ?? e.status ?? 500, e.message, e, this.from) }
+    static raise(...a)   { throw  this.of(...a.concat(this.raise)) }
+    static deny(...a)    { return Promise.reject(this.of(...a.concat(this.deny))) }
+    static ok(x, ...a)   { return Boolean(x) || this.raise(...a.concat(this.ok)) }
+    static no(x, ...a)   { return Boolean(x) && this.raise(...a.concat(this.no)) }
+    static of(...a)      { return Reflect.construct(this, a.concat(this.of)) }
 
-    static from(e, code) {
-        return this.of(
-            code ?? e.code
-                ?? e.status
-                ?? 500,
-            e.message,
-            e,
-        )
+    static parse(argv) {
+        let code, mssg, cause, start
+        for (const a of argv) {
+            switch (typeof a) {
+                case 'number': code ? cause ??= a : code = a; break
+                case 'string': mssg ? cause ??= a : mssg = a; break
+                case 'function': start ??= a; break // take first funtion from arguments, ignore rest
+                default: a == null || (cause = a); break
+            }
+        }
+
+        code  ??= 500
+        mssg  ??= STATUS[ code ] ?? String(code)
+        cause ??= code
+        return [ +code, mssg, cause, start ]
     }
-
-    static deny(...a) { return Promise.reject(this.of(...a)) }
-    static raise(...a) { throw this.of(...a) }
-
-    static ok(x, ...a) { return !!x || this.raise(...a) }
-    static no(x, ...a) { return !!x && this.raise(...a) }
 }
+
+//──────────────────────────────────────────────────────────────────────────────
 
 export class O extends Object {
 
@@ -179,14 +182,6 @@ export class O extends Object {
         this.ƒ     = (...a) => a.reduce((x, y) => this.use(x, y), this.o)
 
         const CEW = [ 'configurable', 'enumerable', 'writable' ]
-
-        /**
-         * @example
-         *  O.use(trg, src)                            - same as `Object.defineProperties(trg, Object.getOwnPropertyDescriptors(src))`
-         *  O.use(trg_a, trg_b, 1,       src_a, src_b) - set `configurable` to true. multiple sources & targets
-         *  O.use(trg_a, trg_b, 1, 0,    src_a, src_b) - set `configurable: true, enumerable: false` multiple sources & targets
-         *  O.use(trg_a, trg_b, 1, 0, 1, src_a, src_b) - set `configurable: true, enumerable: false, writable: true` multiple sources & targets
-         */
         this.use = (...argv) => {
             let a, cew = [], head = [], tail = []
             for (a of argv) {
@@ -201,15 +196,16 @@ export class O extends Object {
             tail.length || Fail.raise('Invalid use: missing source')
             head.length || Fail.raise('Invalid use: missing target')
 
-            tail = this.assign(...tail.map(this.getOwnPropertyDescriptors))
+            tail = this.assign(...tail.map(this.descriptors))
 
             if (cew.length) {
-                cew = [ cew, cew.slice(0, 2) ].map(this.fromEntries)
+                const val = this.from(cew)
+                const get = this.from(cew.slice(0, 2))
                 for (a of this.names(tail).concat(this.symbols(tail)))
-                    this.assign(tail[ a ], cew[ +!!tail[ a ].get ])
+                    this.assign(tail[ a ], tail[ a ].get ? get : val)
             }
             for (a of head)
-                this.defineProperties(a, tail)
+                this.defines(a, tail)
             return a
         }
 
@@ -219,8 +215,8 @@ export class O extends Object {
                 : alias.match(/\S+/g)
 
             const dsc = this.descriptor(src, key)
-            dsc         || Fail.raise(`invalid alias: [${ key } ${ alias }]`)
-            trg.length  || trg.push(src)
+            dsc          || Fail.raise(`invalid alias: [${ key } ${ alias }]`)
+            trg.length   || trg.push(src)
             alias.length || alias.push(key)
 
             for (src of trg) {
@@ -231,7 +227,3 @@ export class O extends Object {
         }
     }
 }
-
-each(STATUS_ERR, (k, m) => O.use(Fail, {
-    get [ k ]() { return this.of(k, m.toLowerCase()) },
-}))

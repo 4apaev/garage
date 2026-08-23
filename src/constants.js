@@ -157,70 +157,41 @@ export const HEADER = {
     WWW_AUTHENTICATE : 'www-authenticate',
 }
 
+export const STATUS_ERR = {
+    400: 'bad request',                         500: 'internal server error',
+    401: 'unauthorized',                        501: 'not implemented',
+    402: 'payment required',                    502: 'bad gateway',
+    403: 'forbidden',                           503: 'service unavailable',
+    404: 'not found',                           504: 'gateway timeout',
+    405: 'method not allowed',                  505: 'http version not supported',
+    406: 'not acceptable',                      506: 'variant also negotiates',
+    407: 'proxy authentication required',       507: 'insufficient storage',
+    408: 'request timeout',                     508: 'loop detected',
+    409: 'conflict',                            509: 'bandwidth limit exceeded',
+    410: 'gone',                                510: 'not extended',
+    411: 'length required',                     511: 'network authentication required',
+    412: 'precondition failed',
+    413: 'payload too large',                   423: 'locked',
+    414: 'uri too long',                        424: 'failed dependency',
+    415: 'unsupported media type',              425: 'too early',
+    416: 'range not satisfiable',               426: 'upgrade required',
+    417: 'expectation failed',                  428: 'precondition required',
+    418: 'teapot',                              429: 'too many requests',
+    421: 'misdirected request',                 431: 'request header fields too large',
+    422: 'unprocessable entity',                451: 'unavailable for legal reasons',
+}
+
 export const STATUS = {
-    CONTINUE                       : 100, 100: 'continue',
-    SWITCHING_PROTOCOLS            : 101, 101: 'switching protocols',
-    PROCESSING                     : 102, 102: 'processing',
-    EARLY_HINTS                    : 103, 103: 'early hints',
-    OK                             : 200, 200: 'ok',
-    CREATED                        : 201, 201: 'created',
-    ACCEPTED                       : 202, 202: 'accepted',
-    NON_AUTHORITATIVE_INFORMATION  : 203, 203: 'non authoritative information',
-    NO_CONTENT                     : 204, 204: 'no content',
-    RESET_CONTENT                  : 205, 205: 'reset content',
-    PARTIAL_CONTENT                : 206, 206: 'partial content',
-    MULTI_STATUS                   : 207, 207: 'multi status',
-    ALREADY_REPORTED               : 208, 208: 'already reported',
-    IM_USED                        : 226, 226: 'im used',
-    MULTIPLE_CHOICES               : 300, 300: 'multiple choices',
-    MOVED_PERMANENTLY              : 301, 301: 'moved permanently',
-    FOUND                          : 302, 302: 'found',
-    SEE_OTHER                      : 303, 303: 'see other',
-    NOT_MODIFIED                   : 304, 304: 'not modified',
-    USE_PROXY                      : 305, 305: 'use proxy',
-    TEMPORARY_REDIRECT             : 307, 307: 'temporary redirect',
-    PERMANENT_REDIRECT             : 308, 308: 'permanent redirect',
-    BAD_REQUEST                    : 400, 400: 'bad request',
-    UNAUTHORIZED                   : 401, 401: 'unauthorized',
-    PAYMENT_REQUIRED               : 402, 402: 'payment required',
-    FORBIDDEN                      : 403, 403: 'forbidden',
-    NOT_FOUND                      : 404, 404: 'not found',
-    METHOD_NOT_ALLOWED             : 405, 405: 'method not allowed',
-    NOT_ACCEPTABLE                 : 406, 406: 'not acceptable',
-    PROXY_AUTHENTICATION_REQUIRED  : 407, 407: 'proxy authentication required',
-    REQUEST_TIMEOUT                : 408, 408: 'request timeout',
-    CONFLICT                       : 409, 409: 'conflict',
-    GONE                           : 410, 410: 'gone',
-    LENGTH_REQUIRED                : 411, 411: 'length required',
-    PRECONDITION_FAILED            : 412, 412: 'precondition failed',
-    PAYLOAD_TOO_LARGE              : 413, 413: 'payload too large',
-    URI_TOO_LONG                   : 414, 414: 'uri too long',
-    UNSUPPORTED_MEDIA_TYPE         : 415, 415: 'unsupported media type',
-    RANGE_NOT_SATISFIABLE          : 416, 416: 'range not satisfiable',
-    EXPECTATION_FAILED             : 417, 417: 'expectation failed',
-    TEAPOT                         : 418, 418: 'teapot',
-    MISDIRECTED_REQUEST            : 421, 421: 'misdirected request',
-    UNPROCESSABLE_ENTITY           : 422, 422: 'unprocessable entity',
-    LOCKED                         : 423, 423: 'locked',
-    FAILED_DEPENDENCY              : 424, 424: 'failed dependency',
-    TOO_EARLY                      : 425, 425: 'too early',
-    UPGRADE_REQUIRED               : 426, 426: 'upgrade required',
-    PRECONDITION_REQUIRED          : 428, 428: 'precondition required',
-    TOO_MANY_REQUESTS              : 429, 429: 'too many requests',
-    REQUEST_HEADER_FIELDS_TOO_LARGE: 431, 431: 'request header fields too large',
-    UNAVAILABLE_FOR_LEGAL_REASONS  : 451, 451: 'unavailable for legal reasons',
-    INTERNAL_SERVER_ERROR          : 500, 500: 'internal server error',
-    NOT_IMPLEMENTED                : 501, 501: 'not implemented',
-    BAD_GATEWAY                    : 502, 502: 'bad gateway',
-    SERVICE_UNAVAILABLE            : 503, 503: 'service unavailable',
-    GATEWAY_TIMEOUT                : 504, 504: 'gateway timeout',
-    HTTP_VERSION_NOT_SUPPORTED     : 505, 505: 'http version not supported',
-    VARIANT_ALSO_NEGOTIATES        : 506, 506: 'variant also negotiates',
-    INSUFFICIENT_STORAGE           : 507, 507: 'insufficient storage',
-    LOOP_DETECTED                  : 508, 508: 'loop detected',
-    BANDWIDTH_LIMIT_EXCEEDED       : 509, 509: 'bandwidth limit exceeded',
-    NOT_EXTENDED                   : 510, 510: 'not extended',
-    NETWORK_AUTHENTICATION_REQUIRED: 511, 511: 'network authentication required',
+    200: 'ok'                           , 300: 'multiple choices'        , 100: 'continue'            ,
+    201: 'created'                      , 301: 'moved permanently'       , 101: 'switching protocols' ,
+    202: 'accepted'                     , 302: 'found'                   , 102: 'processing'          ,
+    203: 'non authoritative information', 303: 'see other'               , 103: 'early hints'         ,
+    204: 'no content'                   , 304: 'not modified'            ,
+    205: 'reset content'                , 305: 'use proxy'               ,
+    206: 'partial content'              , 307: 'temporary redirect'      ,
+    207: 'multi status'                 , 308: 'permanent redirect'      ,
+    208: 'already reported'             ,
+    226: 'im used'                      , ...STATUS_ERR,
 }
 
 export const SYSERR = [
@@ -318,13 +289,6 @@ export const SYSERR = [
     return err
 }, {})
 
-export const STATUS_ERR = Object.keys(STATUS).reduce((err, key) => {
-    Number.isInteger(key = +key)
-    && key >= 400
-        && (err[ key ] = STATUS[ key ])
-    return err
-}, {})
-
 export const MIME = {
     form   : 'multipart/form-data'              ,
     query  : 'application/x-www-form-urlencoded',
@@ -387,19 +351,10 @@ export const MIME = {
     text/event-stream                  sse
 `.trim().split('\n'))
 
-ƒ({
-    MIME,
-    METHOD,
-    HEADER,
-    STATUS,
-    SYSERR,
-    STATUS_ERR,
-})
+ƒ(MIME)
+ƒ(METHOD)
+ƒ(HEADER)
+ƒ(STATUS)
+ƒ(SYSERR)
+ƒ(STATUS_ERR)
 Object.seal(METHOD)
-
-// ƒ(MIME)
-// ƒ(METHOD)
-// ƒ(HEADER)
-// ƒ(STATUS)
-// ƒ(SYSERR)
-// ƒ(STATUS_ERR)
