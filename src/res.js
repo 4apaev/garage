@@ -1,9 +1,9 @@
 import Fs   from 'node:fs/promises'
 import Http from 'node:http'
 
-import { Readable     } from 'node:stream'
-import { MIME, fromPath } from './mime.js'
+import { Readable       } from 'node:stream'
 import { Is, Fail, each } from './util.js'
+import * as Mim           from './mime.js'
 
 export default class Res extends Http.ServerResponse {
     get rq() { return this.req }
@@ -15,7 +15,7 @@ export default class Res extends Http.ServerResponse {
     set size(x)  {        this.set('content-length', x) }
 
     get type()   { return this.get('content-type') }
-    set type(x)  {        this.set('content-type', MIME[ x ] ?? x) }
+    set type(x)  {        this.set('content-type', Mim.get(x)) }
 
     has(k)       { return this.hasHeader(k)       }
     get(k)       { return this.getHeader(k) ?? '' }
@@ -42,7 +42,7 @@ export default class Res extends Http.ServerResponse {
 
             this.status = 200
             this.size = stat.size
-            this.type = fromPath(path, MIME.bin)
+            this.type = Mim.fromPath(path, Mim.MIME.bin)
             this.body = fd.createReadStream({ autoClose: false })
                 .pipe(this)
 
@@ -73,19 +73,19 @@ export default class Res extends Http.ServerResponse {
             this.size ||= Buffer.byteLength(data)
             data = Readable.from(data)
         }
-        if (Readable.isReadable(data)) {
-            this.type ||= MIME.bin
+        if (Is(Readable, data)) {
+            this.type ||= Mim.MIME.bin
             data.pipe(this)
             return this
         }
 
         if (Is.x(data))  {
             data = JSON.stringify(data)
-            this.type ||= MIME.json
+            this.type ||= Mim.MIME.json
             this.size   = Buffer.byteLength(data)
         }
         else if (Is.s(data)) {
-            this.type ||= MIME.txt
+            this.type ||= Mim.MIME.txt
             this.size ||= Buffer.byteLength(data)
         }
 
