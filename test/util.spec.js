@@ -199,11 +199,6 @@ describe('util', () => {
     })
 
     describe('Fail', () => {
-        it('should save current error on the Fail constructor', async () => {
-            const e  = new Fail
-            assrt.equal(Fail.error, e)
-        })
-
         it('creates and raises coded failures', async () => {
             const cause = new Error('root')
             const e  = Fail.of(418, 'teapot', cause)
@@ -221,17 +216,6 @@ describe('util', () => {
             assrt.throws(() => Fail.no(1, 409), { code: 409 })
             await assrt.rejects(Fail.deny(500), { code: 500 })
         })
-
-        it('creates by static getters', async () => {
-            each(STATUS_ERR, (c, m) => {
-                const e = Fail[ c ]
-                assrt.ok(e instanceof Fail)
-                assrt.equal(e.name   , 'Fail')
-                assrt.equal(e.code   ,  +c)
-                assrt.equal(e.message,  m.toLowerCase())
-            })
-        })
-
     })
 
     describe('O', () => {

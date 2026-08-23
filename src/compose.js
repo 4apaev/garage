@@ -3,30 +3,28 @@ import { Fail } from './util.js'
 
 /**
  * @param  { MWare[] } mware
- * @return { MWare   }
+ * @return { MWare }
  */
 export function composeProd(mware) {
     /**
-     * @param  { Req } rq
-     * @param  { Res } rs
-     * @param  { Next } next
+     * @param { Req } rq
+     * @param { Res } rs
+     * @param { Next } next
      */
     return async function (rq, rs, next) {
         /**
          * @param  { number } i
          */
-        const dispatch = i => async () => {
+        const tick = i => async () => {
             const mw = i === mware.length
                 ? next
                 : mware[ i ]
 
-            if (!mw)
-                return
-
-            return mw.call(this, rq, rs, dispatch(i + 1))
+            return mw
+                ? mw.call(this, rq, rs, tick(i + 1))
+                : mw
         }
-
-        return dispatch(0)()
+        return tick(0)()
     }
 }
 
@@ -37,15 +35,15 @@ export function composeProd(mware) {
 export function composeDev(...middleware) {
     const mware = middleware.flat()
     /**
-     * @param  { Req } rq
-     * @param  { Res } rs
-     * @param  { Next } [next]
+     * @param { Req } rq
+     * @param { Res } rs
+     * @param { Next } [next]
      */
     return async function (rq, rs, next) {
         /**
          * @param  { number } i
          */
-        const dispatch = async i => {
+        const tick = async i => {
             const mw = i === mware.length
                 ? next
                 : mware[ i ]
@@ -58,7 +56,7 @@ export function composeDev(...middleware) {
                 called = 1
 
                 try {
-                    return await dispatch(i + 1)
+                    return await tick(i + 1)
                 }
                 finally {
                     done = 1
@@ -69,13 +67,9 @@ export function composeDev(...middleware) {
             called && !done && Fail.raise(500, 'mware resolved before downstream')
             return rt
         }
-        return dispatch(0)
+        return tick(0)
     }
 }
-
-// const compose = process.env.NODE_ENV === 'production'
-//     ? composeProd
-//     : composeDev
 
 export default process.env.NODE_ENV === 'production'
     ? composeProd

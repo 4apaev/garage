@@ -10,16 +10,15 @@ import { describe, it } from 'node:test'
 import { deepEqual, equal, ok, throws } from 'node:assert/strict'
 
 import {
-    Garage,
     Req,
     Res,
-    create,
+    Garage,
 } from '../src/index.js'
 import { Fail } from '../src/util.js'
 
 describe('garage', () => {
     it('creates a node http server with garage request and response classes', () => {
-        const server = create(() => {})
+        const server = Garage.create(() => {})
 
         ok(server instanceof Http.Server)
         equal(server[ Symbol.asyncDispose ] instanceof Function, true)
