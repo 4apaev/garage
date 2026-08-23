@@ -5,8 +5,6 @@ import { URLPattern } from 'node:url'
 import { Fail } from './util.js'
 import compose from './compose.js'
 
-const METHOD = new Set(METHODS)
-
 export default use
 export function use() {
     /** @type { MWare[]     } */ const handlers   = []
@@ -17,7 +15,7 @@ export function use() {
     for (const a of arguments) {
         /**/ if (typeof a == 'function') handlers.push(a)
         else if (typeof a != 'string')   Fail.raise(500, 'failed to create middleware. invalid argument type', a)
-        else if (METHOD.has(a.toUpperCase())) methods.add(a.toUpperCase())
+        else if (METHODS.includes(a.toUpperCase())) methods.add(a.toUpperCase())
         else patterns.push(new URLPattern({ pathname: a }))
     }
 
