@@ -3,18 +3,16 @@
 a small http server, router, and middleware toolkit.
 
 ```js
-import { Router } from 'garage'
+import Garage from 'garage'
 
-const app = new Router({
+const app = Garage.of({
     name: 'garage',
     port: 3000,
 })
 
-app.get('/hello/:world', (rq, rs) => {
-    return rs.json(200, {
-        hello: rq.params.world,
-    })
-})
+app.get('/hello/:world', (rq, rs) =>
+    rs.json(200, {
+        hello: rq.params.world }))
 
 app.use(
     'PUT',
@@ -32,8 +30,8 @@ app.listen()
 
 ## api
 
-- `create(listener)` creates a node http server using garage request/response classes
-- `Router` composes middleware and route handlers
+- `Garage.create(listener)` creates a node http server using garage request/response classes
+- `Garage` composes middleware and route handlers
 - `Req` extends `http.IncomingMessage`
 - `Res` extends `http.ServerResponse`
 - `compose(...middleware)` composes koa-style middleware

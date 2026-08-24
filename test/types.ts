@@ -25,7 +25,7 @@ const payload: Promise<Payload<{ ok: true }>> = Sync.get<{ ok: true }>('/').end(
 
 const json: 'application/json' = MIME.json
 const html: 'text/html' = MIME[ 'text/html' ]
-const notFound: 404 = STATUS.NOT_FOUND
+const notFound: 'not found' = STATUS[ 404 ]
 const enoent: 'ENOENT' = SYSERR.ENOENT.key
 
 const composed: MWare = compose(mw)
@@ -33,5 +33,6 @@ const composedSubpath: MWare = composeSubpath(mw)
 const used: MWare = use('GET', '/x', mw)
 const usedSubpath: MWare = useSubpath('POST', mw)
 const mime = fromPath('/tmp/file.json')
-const fail: Fail = Fail[ 404 ]
+const fail: Fail = Fail.of(404)
+const isFail: boolean = Fail.is(fail)
 const isString: boolean = Is.s('x')
