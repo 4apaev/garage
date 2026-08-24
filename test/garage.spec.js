@@ -14,6 +14,7 @@ import {
     Garage,
 } from '../src/index.js'
 import { Fail } from '../src/util.js'
+import { start, stop } from './server.js'
 
 describe('garage', () => {
     it('creates a node http server with garage request and response classes', () => {
@@ -448,23 +449,3 @@ describe('garage', () => {
         }
     })
 })
-
-// starts a real garage server on an ephemeral port and returns its base url.
-async function start(app) {
-    const table = console.table
-    console.table = () => {}
-
-    app.listen(0)
-    await once(app.server, 'listening')
-
-    console.table = table
-    return `http://127.0.0.1:${ app.server.address().port }`
-}
-
-// closes the server and drops any idle keep-alive sockets fetch left open.
-function stop(app) {
-    return new Promise(ok => {
-        app.server.close(ok)
-        app.server.closeAllConnections()
-    })
-}
