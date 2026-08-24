@@ -16,7 +16,8 @@
         "./use"       : { "types": "./src/types.d.ts", "default": "./src/use.js"       },
         "./util"      : { "types": "./src/types.d.ts", "default": "./src/util.js"      },
         "./sync"      : { "types": "./src/types.d.ts", "default": "./src/sync.js"      },
-        "./mime"      : { "types": "./src/types.d.ts", "default": "./src/mime.js"       }
+        "./mime"      : { "types": "./src/types.d.ts", "default": "./src/mime.js"      },
+        "./mw/ws"     : { "types": "./src/types.d.ts", "default": "./src/mw/ws.js"     }
     },
     "scripts": {
         "test": "node --experimental-test-coverage --test ./test/*.spec.js",
