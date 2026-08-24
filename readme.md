@@ -1,4 +1,7 @@
-# garage
+garage
+================
+
+[![CI](https://github.com/4apaev/garage/actions/workflows/ci.yml/badge.svg)](https://github.com/4apaev/garage/actions/workflows/ci.yml)
 
 a small http server, router, and middleware toolkit.
 
