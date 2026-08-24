@@ -1,6 +1,6 @@
 {
     "name"        : "garage",
-    "version"     : "0.1.0",
+    "version"     : "0.2.1",
     "description" : "a small http server, router, and middleware toolkit",
     "repository"  : "github:4apaev/garage",
     "type"        : "module",
