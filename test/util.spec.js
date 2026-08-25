@@ -79,25 +79,25 @@ describe('util', () => {
 
         it('filters and removes by predicates, collections, regexps, and objects', () => {
             const any = Symbol.for('any')
-            const rows = [
+            const rows = A.of(
                 { kind: 'fruit', color: 'red' },
                 { kind: 'fruit', color: 'yellow' },
                 { kind: 'leaf', color: 'green' },
-            ]
+            )
             const nums = A.of(1, 2, 3, 4)
 
-            assrt.deepEqual(A.uniq([ 1, 1, 2 ]), [ 1, 2 ])
-            assrt.deepEqual(A.fill(3, i => i + 1), [ 1, 2, 3 ])
+            assrt.deepEqual(A.uniq([ 1, 1, 2 ]), A.from([ 1, 2 ]))
+            assrt.deepEqual(A.fill(3, i => i + 1), A.from([ 1, 2, 3 ]))
             assrt.equal(A.prop('id')({ id: 7 }), 7)
 
-            assrt.deepEqual(A.where([ 1, 2, 1 ], 1), [ 1, 1 ])
-            assrt.deepEqual(A.where([ 1, 2, 3 ], new Set([ 2, 3 ])), [ 2, 3 ])
-            assrt.deepEqual(A.where([ 'a', 'b', 'c' ], 'cab'), [ 'a', 'b', 'c' ])
-            assrt.deepEqual(A.where([ 'ant', 'bat', 'eel' ], /a/), [ 'ant', 'bat' ])
+            assrt.deepEqual(A.where([ 1, 2, 1 ], 1), A.from([ 1, 1 ]))
+            assrt.deepEqual(A.where([ 1, 2, 3 ], new Set([ 2, 3 ])), A.from([ 2, 3 ]))
+            assrt.deepEqual(A.where([ 'a', 'b', 'c' ], 'cab'), A.from([ 'a', 'b', 'c' ]))
+            assrt.deepEqual(A.where([ 'ant', 'bat', 'eel' ], /a/), A.from([ 'ant', 'bat' ]))
             assrt.deepEqual(A.where(rows, { kind: 'fruit' }), rows.slice(0, 2))
             assrt.deepEqual(A.where(any, rows, { kind: 'fruit', color: 'green' }), rows)
 
-            assrt.deepEqual(nums.rm(x => x % 2 === 0), [ 2, 4 ])
+            assrt.deepEqual(nums.rm(x => x % 2 === 0), A.of(2, 4))
             assrt.deepEqual(Array.from(nums), [ 1, 3 ])
         })
     })

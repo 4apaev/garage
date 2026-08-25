@@ -25,7 +25,7 @@ export class A extends Array {
     get tail() { return this.at(-1) }
 
     set head(x) { this[ 0 ] = x }
-    set tail(x) { this[ Math.max(0, this.length - 1) ] = x }
+    set tail(x) { this[ Math.max(0, this.size - 1) ] = x }
 
     get size() { return this.length }
     set size(x) { this.length = x }
@@ -36,8 +36,8 @@ export class A extends Array {
     rm(query, ctx, sym)    { return A.rm(this, query, ctx, sym) }
 
     static of()               { return Reflect.construct(this, arguments) }
-    static uniq(a)            { return Array.from(new Set(a)) }
-    static fill(n, fx = echo) { return Array.from({ length: n }, (_, i) => fx(i)) }
+    static uniq(a)            { return A.from(new Set(a)) }
+    static fill(n, fx = echo) { return A.from({ length: n }, (_, i) => fx(i)) }
     static prop(k)            { return x => x[ k ] }
 
     static pre(query, any) {
@@ -57,7 +57,7 @@ export class A extends Array {
         /**/ if (Is.S(it))  [ it, query, ctx, sym ] = [ query, ctx, sym, it ]
         else if (Is.S(ctx))            [ ctx, sym ] = [        sym, ctx ]
 
-        const rs = []
+        const rs = new A
         for (let fx = A.pre(query, sym), i = 0; i < it.length; i++)
             fx.call(ctx, it[ i ], i) && rs.push(it[ i ])
         return rs
@@ -67,7 +67,7 @@ export class A extends Array {
         if (Is.S(it)) [ it, query, ctx, sym ] = [ query, ctx, sym, it ]
         else if (Is.S(ctx))      [ ctx, sym ] = [ sym, ctx ]
 
-        let j = 0, rs = []
+        let j = 0, rs = new A
         for (let i = 0, fx = A.pre(query, sym); i < it.length; i++) {
             fx.call(ctx,      it[ i ], i)
                 ? rs.push(/**/it[ i ])
@@ -227,3 +227,42 @@ export class O extends Object {
         }
     }
 }
+
+//──────────────────────────────────────────────────────────────────────────────
+
+// export function each(x, fx, ctx) {
+//     let i = 0, brk = Symbol.for('break')
+//     for (const [ k, v ] of O.tuple(x)) {
+//         if (brk === fx.call(ctx, k, v, i++, brk))
+//             break
+//     }
+//     return ctx
+// }
+// each.kv = each
+// each.vk = (x, fx, ctx) => {
+//     let i = 0, brk = Symbol.for('break')
+//     for (const [ k, v ] of O.tuple(x)) {
+//         if (brk === fx.call(ctx, v, k, i++, brk))
+//             break
+//     }
+//     return ctx
+// }
+
+// export function raw(s, a) {
+//     return (a => s?.raw
+//         ? String.raw(s, ...a)
+//         : ''.concat(s, ...a))(concat(a ?? []).map(String))
+// }
+
+// export function Rx(s, ...a) {
+//     let flag = ''
+//     let pttr = s?.raw
+//         ?       raw(s, ...a.map(Rx.frmt))
+//         : pttr.concat(s, ...a.map(Rx.frmt))
+
+//     return new Rx(pttr
+//         .replace(/ +# +.*/g, '')
+//         .replace(/ *\n+ *(?![+*])/g, '')
+//         .replace(/ *\/ *([idgmsyuv]+) *\/?$/, (_, f) => (flag += f, '')), flag)
+// }
+// Rx.frmt = x => concat(x).map(x => Is(RegExp, x) ? x.source : String(x)).join('')

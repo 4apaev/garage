@@ -370,12 +370,12 @@ declare module 'garage/util' {
             fx: (this: C, value: T, index: number, array: this) => unknown,
             ctx?: C,
         ): C
-        where(query: AQuery<T>, ctx?: unknown, sym?: symbol): T[]
-        rm(query: AQuery<T>, ctx?: unknown, sym?: symbol): T[]
+        where(query: AQuery<T>, ctx?: unknown, sym?: symbol): A<T>
+        rm(query: AQuery<T>, ctx?: unknown, sym?: symbol): A<T>
 
         static of<T>(...items: T[]): A<T>
-        static uniq<T>(a: Iterable<T>): T[]
-        static fill<T = number>(n: number, fx?: (i: number) => T): T[]
+        static uniq<T>(a: Iterable<T>): A<T>
+        static fill<T = number>(n: number, fx?: (i: number) => T): A<T>
         static prop<K extends PropertyKey>(k: K): <T extends Record<K, unknown>>(x: T) => T[K]
 
         static pre<T>(query: AQuery<T>, any?: symbol): FQuery<T>
@@ -385,17 +385,17 @@ declare module 'garage/util' {
             query: AQuery<T>,
             ctx?: unknown,
             sym?: symbol
-        ): T[]
+        ): A<T>
 
         static where<T>(
             sym: symbol,
             it: ArrayLike<T>,
             query: AQuery<T>,
             ctx?: unknown
-        ): T[]
+        ): A<T>
 
-        static rm<T>(it: T[], query: AQuery<T>, ctx?: unknown, sym?: symbol): T[]
-        static rm<T>(sym: symbol, it: T[], query: AQuery<T>, ctx?: unknown): T[]
+        static rm<T>(it: T[], query: AQuery<T>, ctx?: unknown, sym?: symbol): A<T>
+        static rm<T>(sym: symbol, it: T[], query: AQuery<T>, ctx?: unknown): A<T>
     }
 
     export function random(): number
@@ -454,34 +454,38 @@ declare module 'garage/util' {
         }
     }
 
+    export type Fx = (...a: unknown[]) => unknown
+
     export class Fail extends Error {
-        name: 'Fail'
+        name: string
         code: number
 
         constructor()
-        constructor(msg: string, cause?: unknown, start?: Function)
-        constructor(code: number, msg?: string, cause?: unknown, start?: Function)
+        constructor(msg: string, cause?: unknown, start?: Fx)
+        constructor(code: number, msg?: string, cause?: unknown, start?: Fx)
 
         static is(x: unknown): x is Fail
         static from(e: unknown, code?: number): Fail
 
         static of(): Fail
-        static of(msg: string, cause?: unknown): Fail
-        static of(code: number, msg?: string, cause?: unknown): Fail
+        static of(msg: string, cause?: unknown, start?: Fx): Fail
+        static of(code: number, msg?: string, cause?: unknown, start?: Fx): Fail
 
         static deny(): Promise<never>
-        static deny(msg: string, cause?: unknown): Promise<never>
-        static deny(code: number, msg?: string, cause?: unknown): Promise<never>
+        static deny(msg: string, cause?: unknown, start?: Fx): Promise<never>
+        static deny(code: number, msg?: string, cause?: unknown, start?: Fx): Promise<never>
 
         static raise(): never
-        static raise(msg: string, cause?: unknown): never
-        static raise(code: number, msg?: string, cause?: unknown): never
+        static raise(msg: string, cause?: unknown, start?: Fx): never
+        static raise(code: number, msg?: string, cause?: unknown, start?: Fx): never
 
-        static ok(x: unknown, msg?: string, cause?: unknown): true
-        static ok(x: unknown, code: number, msg?: string, cause?: unknown): true
+        static ok(x: unknown): true
+        static ok(x: unknown, msg?: string, cause?: unknown, start?: Fx): true
+        static ok(x: unknown, code: number, msg?: string, cause?: unknown, start?: Fx): true
 
-        static no(x: unknown, msg?: string, cause?: unknown): false
-        static no(x: unknown, code: number, msg?: string, cause?: unknown): false
+        static no(x: unknown): false
+        static no(x: unknown, msg?: string, cause?: unknown, start?: Fx): false
+        static no(x: unknown, code: number, msg?: string, cause?: unknown, start?: Fx): false
     }
 
     export class O extends Object {
@@ -750,71 +754,85 @@ declare module 'garage/constants' {
     }
 
     export type Mime = Record<string, string> & {
-        readonly 'application/font-woff': 'application/font-woff'
-        readonly 'application/font-woff2': 'application/font-woff2'
-        readonly 'application/javascript': 'application/javascript'
-        readonly 'application/json': 'application/json'
-        readonly 'application/octet-stream': 'application/octet-stream'
         readonly 'application/x-font-bdf': 'application/x-font-bdf'
         readonly 'application/x-font-otf': 'application/x-font-otf'
         readonly 'application/x-font-pcf': 'application/x-font-pcf'
         readonly 'application/x-font-snf': 'application/x-font-snf'
         readonly 'application/x-font-ttf': 'application/x-font-ttf'
-        readonly 'application/x-www-form-urlencoded': 'application/x-www-form-urlencoded'
-        readonly 'application/zip': 'application/zip'
-        readonly bdf: 'application/x-font-bdf'
-        readonly bin: 'application/octet-stream'
-        readonly buffer: 'application/octet-stream'
-        readonly css: 'text/css'
-        readonly csv: 'text/csv'
-        readonly dmg: 'application/octet-stream'
-        readonly form: 'multipart/form-data'
-        readonly gif: 'image/gif'
-        readonly html: 'text/html'
-        readonly ico: 'image/x-icon'
-        readonly 'image/gif': 'image/gif'
-        readonly 'image/jpeg': 'image/jpeg'
-        readonly 'image/png': 'image/png'
-        readonly 'image/svg+xml': 'image/svg+xml'
-        readonly 'image/webp': 'image/webp'
-        readonly 'image/x-icon': 'image/x-icon'
-        readonly img: 'application/octet-stream'
-        readonly iso: 'application/octet-stream'
-        readonly jpeg: 'image/jpeg'
-        readonly jpg: 'image/jpeg'
-        readonly js: 'application/javascript'
-        readonly json: 'application/json'
-        readonly map: 'application/json'
-        readonly md: 'text/x-markdown'
-        readonly mjs: 'application/javascript'
-        readonly multipart: 'multipart/form-data'
-        readonly 'multipart/form-data': 'multipart/form-data'
-        readonly otf: 'application/x-font-otf'
-        readonly pcf: 'application/x-font-pcf'
-        readonly png: 'image/png'
-        readonly query: 'application/x-www-form-urlencoded'
-        readonly snf: 'application/x-font-snf'
-        readonly sse: 'text/event-stream'
-        readonly svg: 'image/svg+xml'
-        readonly svgz: 'image/svg+xml'
-        readonly tar: 'application/zip'
-        readonly text: 'text/plain'
-        readonly 'text/css': 'text/css'
-        readonly 'text/csv': 'text/csv'
+        readonly 'application/font-woff' : 'application/font-woff'
+        readonly 'application/font-woff2': 'application/font-woff2'
+
+        readonly 'image/jpeg'     : 'image/jpeg'
+        readonly 'image/gif'      : 'image/gif'
+        readonly 'image/png'      : 'image/png'
+        readonly 'image/svg+xml'  : 'image/svg+xml'
+        readonly 'image/webp'     : 'image/webp'
+        readonly 'image/x-icon'   : 'image/x-icon'
+
+        readonly 'text/plain'       : 'text/plain'
+        readonly 'text/html'        : 'text/html'
+        readonly 'text/xml'         : 'text/xml'
+        readonly 'text/css'         : 'text/css'
+        readonly 'text/csv'         : 'text/csv'
+        readonly 'text/x-markdown'  : 'text/x-markdown'
         readonly 'text/event-stream': 'text/event-stream'
-        readonly 'text/html': 'text/html'
-        readonly 'text/plain': 'text/plain'
-        readonly 'text/x-markdown': 'text/x-markdown'
-        readonly 'text/xml': 'text/xml'
-        readonly ttc: 'application/x-font-ttf'
-        readonly ttf: 'application/x-font-ttf'
-        readonly txt: 'text/plain'
-        readonly url: 'application/x-www-form-urlencoded'
-        readonly webp: 'image/webp'
-        readonly woff: 'application/font-woff'
-        readonly woff2: 'application/font-woff2'
-        readonly xml: 'text/xml'
-        readonly zip: 'application/zip'
+
+        readonly 'application/zip'         : 'application/zip'
+        readonly 'application/octet-stream': 'application/octet-stream'
+
+        readonly 'application/json'      : 'application/json'
+        readonly 'application/javascript': 'application/javascript'
+
+
+        readonly 'application/x-www-form-urlencoded': 'application/x-www-form-urlencoded'
+        readonly 'multipart/form-data'              : 'multipart/form-data'
+
+        readonly multipart: 'multipart/form-data'
+        readonly form     : 'multipart/form-data'
+
+        readonly url   : 'application/x-www-form-urlencoded'
+        readonly query : 'application/x-www-form-urlencoded'
+
+        readonly zip   : 'application/zip'
+        readonly tar   : 'application/zip'
+
+        readonly js    : 'application/javascript'
+        readonly mjs   : 'application/javascript'
+        readonly json  : 'application/json'
+        readonly map   : 'application/json'
+
+        readonly dmg   : 'application/octet-stream'
+        readonly img   : 'application/octet-stream'
+        readonly iso   : 'application/octet-stream'
+        readonly bin   : 'application/octet-stream'
+        readonly buffer: 'application/octet-stream'
+
+        readonly bdf   : 'application/x-font-bdf'
+        readonly otf   : 'application/x-font-otf'
+        readonly pcf   : 'application/x-font-pcf'
+        readonly snf   : 'application/x-font-snf'
+        readonly ttc   : 'application/x-font-ttf'
+        readonly ttf   : 'application/x-font-ttf'
+        readonly woff  : 'application/font-woff'
+        readonly woff2 : 'application/font-woff2'
+
+        readonly jpeg  : 'image/jpeg'
+        readonly jpg   : 'image/jpeg'
+        readonly gif   : 'image/gif'
+        readonly png   : 'image/png'
+        readonly svg   : 'image/svg+xml'
+        readonly svgz  : 'image/svg+xml'
+        readonly webp  : 'image/webp'
+        readonly ico   : 'image/x-icon'
+
+        readonly txt   : 'text/plain'
+        readonly text  : 'text/plain'
+        readonly html  : 'text/html'
+        readonly xml   : 'text/xml'
+        readonly css   : 'text/css'
+        readonly csv   : 'text/csv'
+        readonly md    : 'text/x-markdown'
+        readonly sse   : 'text/event-stream'
     }
 
     export const METHOD: MethodList
