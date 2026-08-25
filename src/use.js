@@ -2,33 +2,38 @@
 import { METHODS } from 'node:http'
 import { URLPattern } from 'node:url'
 
-import { Fail } from './util.js'
+import { Is, Fail } from './util.js'
 import compose from './compose.js'
 
 export default use
 export function use() {
-    /** @type { MWare[]     } */ const handlers   = []
     /** @type { Validator[] } */ const validators = []
-    /** @type { URLPattern[]} */ const patterns   = []
-    /** @type { Set<string> } */ const methods    = new Set
+    /** @type { Set<string> } */ const methods = new Set
+    /** @type { Set<string> } */ const pttrs = new Set
+    /** @type { Set<MWare>  } */ const mware = new Set
 
     for (const a of arguments) {
-        /**/ if (typeof a == 'function') handlers.push(a)
-        else if (typeof a != 'string')   Fail.raise(500, 'failed to create middleware. invalid argument type', a)
-        else if (METHODS.includes(a.toUpperCase())) methods.add(a.toUpperCase())
-        else patterns.push(new URLPattern({ pathname: a }))
+        if (Is.f(a)) {
+            mware.add(a)
+            continue
+        }
+        Is.s(a) || Fail.raise(500, 'failed to create middleware. invalid argument type', a, use)
+
+        METHODS.includes(a.toUpperCase())
+            ? methods.add(a.toUpperCase())
+            : pttrs.add(a)
     }
 
-    handlers.length || Fail.raise(500, 'failed to create middleware. missing handler')
+    mware.size || Fail.raise(500, 'failed to create middleware. missing handler', 'handler', use)
 
-    const mware = handlers.length > 1
-        ? compose(handlers)
-        : handlers[ 0 ]
+    const fx = mware.size > 1
+        ? compose([ ...mware ])
+        : [ ...mware ][ 0 ]
 
     methods.size && validators.push(createMethodValidator(methods))
-    patterns.length && validators.push(createPathValidator(patterns))
+    pttrs.size && validators.push(createPathValidator(uniqPttr(pttrs)))
 
-    return wrapWithValidators(mware, validators)
+    return wrapWithValidators(fx, validators)
 }
 
 /**
@@ -67,6 +72,14 @@ function createPathValidator(pttrs) {
  */
 function createMethodValidator(methods) {
     return rq => methods.has(rq.method)
+}
+
+/**
+ * @param  { Set<string>  } pttrs
+ * @return { URLPattern[] }
+ */
+function uniqPttr(pttrs) {
+    return Array.from(pttrs, p => new URLPattern({ pathname: p }))
 }
 
 /**
