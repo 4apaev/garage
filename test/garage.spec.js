@@ -4,22 +4,21 @@ import Os   from 'node:os'
 import Path from 'node:path'
 
 import { once } from 'node:events'
-import { PassThrough, Writable } from 'node:stream'
 
 import { describe, it } from 'node:test'
 import { deepEqual, equal, ok, throws } from 'node:assert/strict'
 
 import {
-    Garage,
     Req,
     Res,
-    create,
+    Garage,
 } from '../src/index.js'
 import { Fail } from '../src/util.js'
+import { start, stop } from './server.js'
 
 describe('garage', () => {
     it('creates a node http server with garage request and response classes', () => {
-        const server = create(() => {})
+        const server = Garage.create(() => {})
 
         ok(server instanceof Http.Server)
         equal(server[ Symbol.asyncDispose ] instanceof Function, true)
@@ -46,349 +45,407 @@ describe('garage', () => {
         server.close()
     })
 
-    it('listens on the configured port and reports options', () => {
-        const app = new Garage({ name: 'shop', port: 1234 })
+    it('listens on the configured port and reports options', async () => {
+        const app = Garage.of({ name: 'shop', port: 0 })
         const table = console.table
-        let port, reported
+        let reported
 
-        app.server = {
-            listen(p, ready) {
-                port = p
-                ready()
-            },
-        }
-        console.table = x => {
-            reported = x
-        }
+        console.table = x => { reported = x }
 
         try {
             app.listen()
+            await once(app.server, 'listening')
         }
         finally {
             console.table = table
         }
 
-        equal(port, 1234)
-        equal(reported, app.options)
+        try {
+            ok(app.server.listening)
+            ok(app.server.address().port > 0)
+            equal(reported, app.options)
+        }
+        finally {
+            await stop(app)
+        }
     })
 
-    it('listens on the configured port and reports options', t => {
-        const app = new Garage({ name: 'shop', port: 1234 })
-        let port
+    it('listens on the configured port and reports options', async t => {
+        const app = Garage.of({ name: 'shop', port: 0 })
 
         t.mock.method(console, 'table')
 
-        app.server = {
-            listen(p, ready) {
-                port = p
-                ready()
-            } }
-
         app.listen()
+        await once(app.server, 'listening')
 
-        equal(console.table.mock.callCount(), 1)
+        try {
+            equal(console.table.mock.callCount(), 1)
 
-        const [ call ] = console.table.mock.calls
+            const [ call ] = console.table.mock.calls
 
-        equal(call.this, console)
-        equal(call.arguments.length, 1)
+            equal(call.this, console)
+            equal(call.arguments.length, 1)
 
-        const [ argv ] = call.arguments
+            const [ argv ] = call.arguments
 
-        equal(argv.port, 1234)
-        equal(argv.name, 'shop')
-        deepEqual(argv, app.options)
-
-        t.mock.reset()
+            equal(argv.port, 0)
+            equal(argv.name, 'shop')
+            deepEqual(argv, app.options)
+        }
+        finally {
+            t.mock.reset()
+            await stop(app)
+        }
     })
 
     it('routes by method and url pattern', async () => {
         const app = new Garage
-        const rs = new MockRes
-        const rq = {
-            method: 'GET',
-            params: Object.create(null),
-            path  : '/items/a%20b',
-            url   : '/items/a%20b',
+        app.get('/items/:id', (rq, rs) => rs.json(200, { id: rq.params.id }))
+
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/items/a%20b')
+
+            equal(res.status, 200)
+            deepEqual(await res.json(), { id: 'a b' })
         }
-
-        app.get('/items/:id', (req, res) => res.json(200, { id: req.params.id }))
-        app.init()
-        await app.request(rq, rs)
-
-        equal(rs.status, 200)
-        deepEqual(JSON.parse(rs.text()), { id: 'a b' })
+        finally {
+            await stop(app)
+        }
     })
 
     it('freezes garage middleware after initialization', async () => {
         const app = new Garage
-        const rs = new MockRes
 
-        app.get('/first', (req, res, next) => next())
-        app.get('/second', (req, res) => res.send(201, 'second'))
+        app.get('/first', (rq, rs, next) => next())
+        app.get('/second', (rq, rs) => rs.send(201, 'second'))
+        app.use((rq, rs) => rs.send(404, 'not found'))
 
-        app.init()
+        const url = await start(app)
+        try {
+            throws(() => app.get('/late', () => {}), /garage already initialized/)
 
-        throws(() => app.get('/late', () => {}), /garage already initialized/)
+            const first  = await fetch(url + '/first')
+            const second = await fetch(url + '/second')
 
-        await app.request(request('/first'), rs)
-        await app.request(request('/second'), rs)
-
-        equal(rs.status, 201)
-        equal(rs.body, 'second')
+            equal(first.status, 404)
+            equal(await first.text(), 'not found')
+            equal(second.status, 201)
+            equal(await second.text(), 'second')
+        }
+        finally {
+            await stop(app)
+        }
     })
 
-    it('handles errors through the default onerror hook', () => {
+    it('handles errors through the default onerror hook', async () => {
         const app = new Garage
-        const rq = request('/missing')
-        const rs = new MockRes
-        const err = Fail.of(404, 'missing')
         let event
 
-        app.on('error', (e, req, res) => {
-            event = { e, req, res }
+        app.get('/missing', () => Fail.raise(404, 'missing'))
+        app.on('error', (e, rq, rs) => {
+            event = { e, rq, rs }
         })
 
-        app.onerror(err, rq, rs, app)
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/missing')
 
-        equal(event.e, err)
-        equal(event.req, rq)
-        equal(event.res, rs)
-        equal(rs.status, 404)
-        equal(rs.type, 'text/plain')
-        equal(rs.text(), 'missing')
+            equal(res.status, 404)
+            equal(res.headers.get('content-type'), 'text/plain')
+            equal(await res.text(), 'missing')
+
+            equal(event.e.code, 404)
+            equal(event.e.message, 'missing')
+
+            ok(event.rq instanceof Req)
+            ok(event.rs instanceof Res)
+        }
+        finally {
+            await stop(app)
+        }
     })
 
     it('passes request failures to onerror', async () => {
         const app = new Garage
-        const rq = request('/boom')
-        const rs = new MockRes
         const root = new Error('boom')
         let seen
 
-        app.use(() => {
-            throw root
-        })
-        app.onerror = (e, req, res, ctx) => {
-            seen = { e, req, res, ctx }
-            return 'handled'
+        app.use(() => { throw root })
+        app.onerror = (e, rq, rs, ctx) => {
+            seen = { e, rq, rs, ctx }
+            return rs.send(200, 'handled')
         }
-        app.init()
 
-        equal(await app.request(rq, rs), 'handled')
-        equal(seen.e.code, 500)
-        equal(seen.e.message, 'boom')
-        equal(seen.e.cause, root)
-        equal(seen.req, rq)
-        equal(seen.res, rs)
-        equal(seen.ctx, app)
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/boom')
+
+            equal(await res.text(), 'handled')
+            equal(seen.e.code, 500)
+            equal(seen.e.message, 'boom')
+            equal(seen.e.cause, root)
+            ok(seen.rq instanceof Req)
+            ok(seen.rs instanceof Res)
+            equal(seen.ctx, app)
+        }
+        finally {
+            await stop(app)
+        }
     })
 
     it('routes through verb helpers', async () => {
         const app = new Garage
         const seen = []
+        const record = (rq, rs) => {
+            seen.push([ rq.method, rq.params.id ])
+            rs.send(200, rq.params.id)
+        }
 
-        app.put('/items/:id', rq => seen.push([ rq.method, rq.params.id ]))
-        app.post('/items/:id', rq => seen.push([ rq.method, rq.params.id ]))
-        app.patch('/items/:id', rq => seen.push([ rq.method, rq.params.id ]))
-        app.del('/items/:id', rq => seen.push([ rq.method, rq.params.id ]))
+        app.put('/items/:id', record)
+        app.post('/items/:id', record)
+        app.patch('/items/:id', record)
+        app.del('/items/:id', record)
 
-        app.init()
+        const url = await start(app)
+        try {
+            for (const [ method, id ] of [[ 'PUT', 'a' ], [ 'POST', 'b' ], [ 'PATCH', 'c' ], [ 'DELETE', 'd' ]])
+                await (await fetch(url + '/items/' + id, { method })).text()
 
-        await app.request(request('/items/a', 'PUT'), new MockRes)
-        await app.request(request('/items/b', 'POST'), new MockRes)
-        await app.request(request('/items/c', 'PATCH'), new MockRes)
-        await app.request(request('/items/d', 'DELETE'), new MockRes)
-
-        deepEqual(seen, [
-            [ 'PUT', 'a' ],
-            [ 'POST', 'b' ],
-            [ 'PATCH', 'c' ],
-            [ 'DELETE', 'd' ],
-        ])
+            deepEqual(seen, [
+                [ 'PUT', 'a' ],
+                [ 'POST', 'b' ],
+                [ 'PATCH', 'c' ],
+                [ 'DELETE', 'd' ],
+            ])
+        }
+        finally {
+            await stop(app)
+        }
     })
 
     it('parses request urls, query, headers, and json bodies', async () => {
+        const app = new Garage
         const body = JSON.stringify({ ok: true })
-        const rq = readableRequest({
-            body,
-            url    : '/hello?x=1&y=two',
-            method : 'POST',
-            headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) },
+
+        app.post('/hello', async (rq, rs) => {
+            await rq.reader()
+            rs.json(200, {
+                body : rq.body,
+                path : rq.path,
+                query: rq.query,
+                size : rq.size,
+                type : rq.get('Content-Type'),
+                has  : rq.has('Content-Type'),
+            })
         })
 
-        ok(rq instanceof Req)
-        await rq.reader()
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/hello?x=1&y=two', {
+                method : 'POST',
+                headers: { 'content-type': 'application/json' },
+                body,
+            })
 
-        deepEqual({
-            body : rq.body,
-            path : rq.path,
-            query: rq.query,
-            size : rq.size,
-            type : rq.get('Content-Type'),
-            has  : rq.has('Content-Type'),
-        }, {
-            body : { ok: true },
-            path : '/hello',
-            query: { x: '1', y: 'two', __proto__: null },
-            size : body.length,
-            type : 'application/json',
-            has  : true,
-        })
+            deepEqual(await res.json(), {
+                body : { ok: true },
+                path : '/hello',
+                query: { x: '1', y: 'two' },
+                size : body.length,
+                type : 'application/json',
+                has  : true,
+            })
+        }
+        finally {
+            await stop(app)
+        }
     })
 
     it('records malformed json as a fail without throwing out of the reader', async () => {
-        const rq = readableRequest({
-            body   : '{',
-            headers: { 'content-type': 'application/json' },
+        const app = new Garage
+
+        app.post('/echo', async (rq, rs) => {
+            await rq.reader()
+            rs.json(200, { errorCode: rq.error?.code, body: rq.body })
         })
 
-        await rq.reader()
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/echo', {
+                method : 'POST',
+                headers: { 'content-type': 'application/json' },
+                body   : '{',
+            })
+            const json = await res.json()
 
-        equal(rq.error.code, 400)
-        equal(rq.body, undefined)
+            equal(json.errorCode, 400)
+            equal(json.body, void 0)
+        }
+        finally {
+            await stop(app)
+        }
     })
 
     it('reads empty json, text, and binary request bodies', async () => {
-        const json = readableRequest({ headers: { 'content-type': 'application/json' }})
-        const text = readableRequest({ headers: { 'content-type': 'text/plain; charset=utf-8' }, body: 'hello' })
-        const bin  = readableRequest({ headers: { 'content-type': 'application/octet-stream' }, body: Buffer.from([ 1, 2, 3 ]) })
+        const app = new Garage
 
-        await json.reader()
-        await text.reader()
-        await bin.reader()
+        app.post('/echo', async (rq, rs) => {
+            await rq.reader()
+            Buffer.isBuffer(rq.body)
+                ? rs.send(200, rq.body)
+                : rs.json(200, { body: rq.body })
+        })
 
-        equal(json.body, void 0)
-        equal(text.body, 'hello')
-        deepEqual(bin.body, Buffer.from([ 1, 2, 3 ]))
+        const url = await start(app)
+        try {
+            const json = await fetch(url + '/echo', {
+                method : 'POST',
+                headers: { 'content-type': 'application/json' },
+            })
+            equal((await json.json()).body, void 0)
+
+            const text = await fetch(url + '/echo', {
+                method : 'POST',
+                headers: { 'content-type': 'text/plain; charset=utf-8' },
+                body   : 'hello',
+            })
+            equal((await text.json()).body, 'hello')
+
+            const bin = await fetch(url + '/echo', {
+                method : 'POST',
+                headers: { 'content-type': 'application/octet-stream' },
+                body   : Buffer.from([ 1, 2, 3 ]),
+            })
+            deepEqual(Buffer.from(await bin.arrayBuffer()), Buffer.from([ 1, 2, 3 ]))
+        }
+        finally {
+            await stop(app)
+        }
     })
 
     it('sends json, text, buffers, empty responses, and files', async () => {
+        const app = new Garage
         const dir = await Fs.mkdtemp(Path.join(Os.tmpdir(), 'garage-'))
         const file = Path.join(dir, 'note.txt')
 
         await Fs.writeFile(file, 'file body')
 
+        app.get('/json', (rq, rs) => rs.json(202, { ok: true }))
+        app.get('/text', (rq, rs) => rs.send(203, 'plain'))
+        app.get('/buffer', (rq, rs) => rs.send(200, Buffer.from('bytes')))
+        app.get('/empty', (rq, rs) => rs.send(204))
+        app.get('/file', (rq, rs) => rs.file(file))
+
+        const url = await start(app)
         try {
-            const json = new MockRes
-            json.json(202, { ok: true })
+            const json = await fetch(url + '/json')
             equal(json.status, 202)
-            equal(json.get('content-type'), 'application/json')
-            equal(json.get('content-length'), 11)
-            equal(json.text(), '{"ok":true}')
+            equal(json.headers.get('content-type'), 'application/json')
+            equal(json.headers.get('content-length'), '11')
+            equal(await json.text(), '{"ok":true}')
 
-            const text = new MockRes
-            text.send(203, 'plain')
+            const text = await fetch(url + '/text')
             equal(text.status, 203)
-            equal(text.get('content-type'), 'text/plain')
-            equal(text.text(), 'plain')
+            equal(text.headers.get('content-type'), 'text/plain')
+            equal(await text.text(), 'plain')
 
-            const buffer = new MockRes
-            buffer.send(200, Buffer.from('bytes'))
-            await once(buffer, 'finish')
-            equal(buffer.get('content-type'), 'application/octet-stream')
-            equal(buffer.text(), 'bytes')
+            const buffer = await fetch(url + '/buffer')
+            equal(buffer.headers.get('content-type'), 'application/octet-stream')
+            equal(await buffer.text(), 'bytes')
 
-            const empty = new MockRes
-            empty.send(204)
+            const empty = await fetch(url + '/empty')
             equal(empty.status, 204)
-            equal(empty.get('content-length'), 0)
-            equal(empty.text(), '')
+            equal(await empty.text(), '')
 
-            const filed = new MockRes
-            await filed.file(file)
-            equal(filed.get('content-type'), 'text/plain')
-            equal(filed.get('content-length'), 9)
-            equal(filed.text(), 'file body')
+            const filed = await fetch(url + '/file')
+            equal(filed.headers.get('content-type'), 'text/plain')
+            equal(filed.headers.get('content-length'), '9')
+            equal(await filed.text(), 'file body')
         }
         finally {
             await Fs.rm(dir, { force: true, recursive: true })
+            await stop(app)
         }
     })
 
-    it('sends plain objects as json and preserves explicit response types', () => {
-        const object = new MockRes
-        object.send(200, { ok: true })
-        equal(object.get('content-type'), 'application/json')
-        equal(object.text(), '{"ok":true}')
+    it('sends plain objects as json and preserves explicit response types', async () => {
+        const app = new Garage
 
-        const html = new MockRes
-        html.type = 'html'
-        html.send(200, '<p>hi</p>')
-        equal(html.get('content-type'), 'text/html')
-        equal(html.text(), '<p>hi</p>')
+        app.get('/object', (rq, rs) => rs.send(200, { ok: true }))
+        app.get('/html', (rq, rs) => {
+            rs.type = 'html'
+            rs.send(200, '<p>hi</p>')
+        })
+
+        const url = await start(app)
+        try {
+            const object = await fetch(url + '/object')
+            equal(object.headers.get('content-type'), 'application/json')
+            equal(await object.text(), '{"ok":true}')
+
+            const html = await fetch(url + '/html')
+            equal(html.headers.get('content-type'), 'text/html')
+            equal(await html.text(), '<p>hi</p>')
+        }
+        finally {
+            await stop(app)
+        }
     })
 
-    it('sets, appends, and removes response headers', () => {
-        const rs = new MockRes
+    it('sets, appends, and removes response headers', async () => {
+        const app = new Garage
 
-        equal(rs.set('x-one', '1'), rs)
-        equal(rs.set({ 'x-two': '2' }), rs)
-        equal(rs.append('x-one', '3'), rs)
-        equal(rs.has('x-one'), true)
-        deepEqual(rs.get('x-one'), [ '1', '3' ])
-        equal(rs.get('x-two'), '2')
+        app.get('/headers', (rq, rs) => {
+            rs.set('x-one', '1')
+            rs.set({ 'x-two': '2' })
+            rs.append('x-one', '3')
 
-        rs.rm('x-one')
-        equal(rs.has('x-one'), false)
-        equal(rs.get('x-one'), '')
+            const before = { has: rs.has('x-one'), get: rs.get('x-one') }
+            rs.rm('x-one')
+            const after = { has: rs.has('x-one'), get: rs.get('x-one') }
+
+            rs.json(200, { before, after })
+        })
+
+        const url = await start(app)
+        try {
+            const res  = await fetch(url + '/headers')
+            const body = await res.json()
+
+            deepEqual(body.before, { has: true, get: [ '1', '3' ]})
+            deepEqual(body.after, { has: false, get: '' })
+            equal(res.headers.get('x-one'), null)
+            equal(res.headers.get('x-two'), '2')
+        }
+        finally {
+            await stop(app)
+        }
     })
 
     it('turns missing files into 404 responses', async () => {
-        const rs = new MockRes
+        const app = new Garage
         const error = console.error
+        let captured
 
         console.error = () => {}
+
+        app.get('/missing-file', async (rq, rs) => {
+            await rs.file('/definitely/not/here.txt')
+            captured = rs.error
+        })
+
+        const url = await start(app)
         try {
-            equal(await rs.file('/definitely/not/here.txt'), rs)
+            const res = await fetch(url + '/missing-file')
+
+            equal(res.status, 404)
+            equal(await res.text(), '')
+            equal(captured.code, 404)
         }
         finally {
             console.error = error
+            await stop(app)
         }
-
-        equal(rs.status, 404)
-        equal(rs.error.code, 404)
-        equal(rs.text(), '')
     })
 })
-
-function request(path, method = 'GET') {
-    return {
-        method,
-        params: Object.create(null),
-        path,
-        url   : path,
-    }
-}
-
-function readableRequest(opt) {
-    const rq = new Req(new PassThrough)
-
-    rq.headers = opt.headers ?? {}
-    rq.method  = opt.method ?? 'GET'
-    rq.url     = opt.url ?? '/'
-    rq.push(opt.body ?? '')
-    rq.push(null)
-
-    return rq
-}
-
-class MockRes extends Writable {
-    chunks     = []
-    statusCode = 200
-    hd         = Object.create(null)
-    hasHeader(k)       { return k.toLowerCase() in this.hd }
-    getHeader(k)       { return this.hd[ k.toLowerCase() ] }
-    setHeader(k, v)    { return this.hd[ k.toLowerCase() ] = v, this }
-    removeHeader(k)    { return delete this.hd[ k.toLowerCase() ], this }
-    appendHeader(k, v) { return this.hasHeader(k = k.toLowerCase()) ? (this.hd[ k ] = [].concat(this.hd[ k ], v).map(String), this) : this.setHeader(k, v) }
-    // test-only inspector: real responses are write-only from app code.
-    text()             { return Buffer.concat(this.chunks).toString('utf8') }
-    _write(x, _, next) { this.chunks.push(Buffer.from(x)), next() }
-}
-
-// keep the response helpers under test without requiring a real socket.
-Object.defineProperties(
-    MockRes.prototype,
-    Object.getOwnPropertyDescriptors(
-        Res.prototype))

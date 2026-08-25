@@ -20,8 +20,6 @@ declare module 'garage' {
         onerror?: (this: Garage, e: Fail, rq: Req, rs: Res, app: Garage) => unknown
     }
 
-    export type RouterOptions = GarageOptions
-
     export class Garage extends EventEmitter {
         middleware?: MWare
         mware: MWare[]
@@ -44,9 +42,7 @@ declare module 'garage' {
         static create(listener?: (rq: Req, rs: Res) => unknown): Server
     }
 
-    export { Garage as Router }
     export default Garage
-    export const create: typeof Garage.create
 
     export class Req extends IncomingMessage {
         body?: unknown
@@ -90,8 +86,6 @@ declare module 'garage' {
     export { default as use } from 'garage/use'
 
     export {
-        composeDev,
-        composeProd,
         default as compose,
     } from 'garage/compose'
 }
@@ -101,13 +95,10 @@ declare module 'garage/garage' {
         Garage,
         Req,
         Res,
-        Router,
-        create,
         default,
     } from 'garage'
     export type {
         GarageOptions,
-        RouterOptions,
     } from 'garage'
 }
 
@@ -185,6 +176,75 @@ declare module 'garage/mime' {
 
     export function extname(file: string | URL): string
     export function is(expected: string, actual?: string | THead | null): boolean
+}
+
+declare module 'garage/mw/ws' {
+    import type { IncomingMessage } from 'node:http'
+    import type { Duplex } from 'node:stream'
+
+    /** the fixed rfc 6455 handshake guid, identical on every websocket server */
+    export const MAGIC: '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+
+    /** frame opcodes: 0x0-0x7 data, 0x8-0xf control */
+    export const OP: {
+        cont : 0x0
+        text : 0x1
+        bin  : 0x2
+        close: 0x8
+        ping : 0x9
+        pong : 0xA
+    }
+
+    /** base64(sha1(key + MAGIC)) - the Sec-WebSocket-Accept value for a client key */
+    export function acceptKey(key: string): string
+
+    export interface FrameOptions {
+        /** one of OP.* - default OP.text */
+        opcode?: number
+        /** true = act as a client: set the MASK bit, XOR the payload */
+        mask?: boolean
+    }
+
+    /** one complete wire frame, FIN always set (no fragmentation) */
+    export function encodeFrame(payload: Buffer | string, opt?: FrameOptions): Buffer
+
+    /** a parsed frame - payload already unmasked */
+    export interface Frame {
+        fin: boolean
+        opcode: number
+        masked: boolean
+        payload: Buffer
+        /** total bytes this frame took on the wire - header + key + payload */
+        size: number
+    }
+
+    export interface FrameParser {
+        /** feed a tcp chunk; onFrame fires once per completed frame */
+        push(chunk: Buffer): void
+    }
+
+    export function createFrameParser(onFrame: (frame: Frame) => unknown): FrameParser
+
+    export interface WssOptions<Meta = unknown> {
+        /** returns per-connection metadata, or throws/rejects to send a plain 401 before the 101 */
+        authenticate?(rq: IncomingMessage): Meta | Promise<Meta>
+        /** keepalive interval in ms - default 30000 */
+        ping?: number
+    }
+
+    export interface Wss<Meta = unknown> {
+        /** wire to `server.on('upgrade')` - answers 101 or a plain http refusal */
+        handleUpgrade(rq: IncomingMessage, socket: Duplex): void
+        /** guarded raw write of an already-encoded frame (see encodeFrame) */
+        send(socket: Duplex, frame: Buffer): void
+        /** iterate live connections with their authenticate() metadata */
+        each(fn: (meta: Meta, socket: Duplex) => void): void
+        stats(): { sockets: number }
+        /** close-frame every socket (1001), stop the heartbeat */
+        close(): void
+    }
+
+    export default function createWss<Meta = unknown>(opt?: WssOptions<Meta>): Wss<Meta>
 }
 
 declare module 'garage/sync' {
@@ -310,12 +370,12 @@ declare module 'garage/util' {
             fx: (this: C, value: T, index: number, array: this) => unknown,
             ctx?: C,
         ): C
-        where(query: AQuery<T>, ctx?: unknown, sym?: symbol): T[]
-        rm(query: AQuery<T>, ctx?: unknown, sym?: symbol): T[]
+        where(query: AQuery<T>, ctx?: unknown, sym?: symbol): A<T>
+        rm(query: AQuery<T>, ctx?: unknown, sym?: symbol): A<T>
 
         static of<T>(...items: T[]): A<T>
-        static uniq<T>(a: Iterable<T>): T[]
-        static fill<T = number>(n: number, fx?: (i: number) => T): T[]
+        static uniq<T>(a: Iterable<T>): A<T>
+        static fill<T = number>(n: number, fx?: (i: number) => T): A<T>
         static prop<K extends PropertyKey>(k: K): <T extends Record<K, unknown>>(x: T) => T[K]
 
         static pre<T>(query: AQuery<T>, any?: symbol): FQuery<T>
@@ -325,17 +385,17 @@ declare module 'garage/util' {
             query: AQuery<T>,
             ctx?: unknown,
             sym?: symbol
-        ): T[]
+        ): A<T>
 
         static where<T>(
             sym: symbol,
             it: ArrayLike<T>,
             query: AQuery<T>,
             ctx?: unknown
-        ): T[]
+        ): A<T>
 
-        static rm<T>(it: T[], query: AQuery<T>, ctx?: unknown, sym?: symbol): T[]
-        static rm<T>(sym: symbol, it: T[], query: AQuery<T>, ctx?: unknown): T[]
+        static rm<T>(it: T[], query: AQuery<T>, ctx?: unknown, sym?: symbol): A<T>
+        static rm<T>(sym: symbol, it: T[], query: AQuery<T>, ctx?: unknown): A<T>
     }
 
     export function random(): number
@@ -394,55 +454,38 @@ declare module 'garage/util' {
         }
     }
 
+    export type Fx = (...a: unknown[]) => unknown
+
     export class Fail extends Error {
-        name: 'Fail'
+        name: string
         code: number
 
         constructor()
-        constructor(msg: string, cause?: unknown)
-        constructor(code: number, msg?: string, cause?: unknown)
+        constructor(msg: string, cause?: unknown, start?: Fx)
+        constructor(code: number, msg?: string, cause?: unknown, start?: Fx)
 
-        static error: Fail
+        static is(x: unknown): x is Fail
+        static from(e: unknown, code?: number): Fail
 
         static of(): Fail
-        static of(msg: string, cause?: unknown): Fail
-        static of(code: number, msg?: string, cause?: unknown): Fail
+        static of(msg: string, cause?: unknown, start?: Fx): Fail
+        static of(code: number, msg?: string, cause?: unknown, start?: Fx): Fail
 
         static deny(): Promise<never>
-        static deny(msg: string, cause?: unknown): Promise<never>
-        static deny(code: number, msg?: string, cause?: unknown): Promise<never>
+        static deny(msg: string, cause?: unknown, start?: Fx): Promise<never>
+        static deny(code: number, msg?: string, cause?: unknown, start?: Fx): Promise<never>
 
         static raise(): never
-        static raise(msg: string, cause?: unknown): never
-        static raise(code: number, msg?: string, cause?: unknown): never
+        static raise(msg: string, cause?: unknown, start?: Fx): never
+        static raise(code: number, msg?: string, cause?: unknown, start?: Fx): never
 
-        static ok(x: unknown, msg?: string, cause?: unknown): true
-        static ok(x: unknown, code: number, msg?: string, cause?: unknown): true
+        static ok(x: unknown): true
+        static ok(x: unknown, msg?: string, cause?: unknown, start?: Fx): true
+        static ok(x: unknown, code: number, msg?: string, cause?: unknown, start?: Fx): true
 
-        static no(x: unknown, msg?: string, cause?: unknown): false
-        static no(x: unknown, code: number, msg?: string, cause?: unknown): false
-
-        static get [ 400 ](): Fail;  static get [ 423 ](): Fail
-        static get [ 401 ](): Fail;  static get [ 424 ](): Fail
-        static get [ 402 ](): Fail;  static get [ 425 ](): Fail
-        static get [ 403 ](): Fail;  static get [ 426 ](): Fail
-        static get [ 404 ](): Fail;  static get [ 428 ](): Fail
-        static get [ 405 ](): Fail;  static get [ 429 ](): Fail
-        static get [ 406 ](): Fail;  static get [ 431 ](): Fail
-        static get [ 407 ](): Fail;  static get [ 451 ](): Fail
-        static get [ 408 ](): Fail;  static get [ 500 ](): Fail
-        static get [ 409 ](): Fail;  static get [ 501 ](): Fail
-        static get [ 410 ](): Fail;  static get [ 502 ](): Fail
-        static get [ 411 ](): Fail;  static get [ 503 ](): Fail
-        static get [ 412 ](): Fail;  static get [ 504 ](): Fail
-        static get [ 413 ](): Fail;  static get [ 505 ](): Fail
-        static get [ 414 ](): Fail;  static get [ 506 ](): Fail
-        static get [ 415 ](): Fail;  static get [ 507 ](): Fail
-        static get [ 416 ](): Fail;  static get [ 508 ](): Fail
-        static get [ 417 ](): Fail;  static get [ 509 ](): Fail
-        static get [ 418 ](): Fail;  static get [ 510 ](): Fail
-        static get [ 421 ](): Fail;  static get [ 511 ](): Fail
-        static get [ 422 ](): Fail
+        static no(x: unknown): false
+        static no(x: unknown, msg?: string, cause?: unknown, start?: Fx): false
+        static no(x: unknown, code: number, msg?: string, cause?: unknown, start?: Fx): false
     }
 
     export class O extends Object {
@@ -454,7 +497,6 @@ declare module 'garage/util' {
         static descriptors: typeof Object.getOwnPropertyDescriptors
         static symbols: typeof Object.getOwnPropertySymbols
         static names: typeof Object.getOwnPropertyNames
-        static props: typeof Object.keys
         static from: typeof Object.fromEntries
         static own: typeof Object.hasOwn
 
@@ -474,46 +516,26 @@ declare module 'garage/util' {
 }
 
 declare module 'garage/constants' {
-    export type Method =
-        | 'ACL'
-        | 'BASELINE-CONTROL'
-        | 'BIND'
-        | 'CHECKIN'
-        | 'CHECKOUT'
-        | 'CONNECT'
-        | 'COPY'
-        | 'DELETE'
-        | 'GET'
-        | 'HEAD'
-        | 'LABEL'
-        | 'LINK'
-        | 'LOCK'
-        | 'MERGE'
-        | 'MKACTIVITY'
-        | 'MKCALENDAR'
-        | 'MKCOL'
-        | 'MKREDIRECTREF'
-        | 'MKWORKSPACE'
-        | 'MOVE'
-        | 'OPTIONS'
-        | 'ORDERPATCH'
-        | 'PATCH'
-        | 'POST'
-        | 'PRI'
-        | 'PROPFIND'
-        | 'PROPPATCH'
-        | 'PUT'
-        | 'REBIND'
-        | 'REPORT'
-        | 'SEARCH'
-        | 'TRACE'
-        | 'UNBIND'
-        | 'UNCHECKOUT'
-        | 'UNLINK'
-        | 'UNLOCK'
-        | 'UPDATE'
-        | 'UPDATEREDIRECTREF'
-        | 'VERSION-CONTROL'
+    export type Method =     | 'ACL'
+        | 'BASELINE-CONTROL' | 'OPTIONS'
+        | 'BIND'             | 'ORDERPATCH'
+        | 'CHECKIN'          | 'PATCH'
+        | 'CHECKOUT'         | 'POST'
+        | 'CONNECT'          | 'PRI'
+        | 'COPY'             | 'PROPFIND'
+        | 'DELETE'           | 'PROPPATCH'
+        | 'GET'              | 'PUT'
+        | 'HEAD'             | 'REBIND'
+        | 'LABEL'            | 'REPORT'
+        | 'LINK'             | 'SEARCH'
+        | 'LOCK'             | 'TRACE'
+        | 'MERGE'            | 'UNBIND'
+        | 'MKACTIVITY'       | 'UNCHECKOUT'
+        | 'MKCALENDAR'       | 'UNLINK'
+        | 'MKCOL'            | 'UNLOCK'
+        | 'MKREDIRECTREF'    | 'UPDATE'
+        | 'MKWORKSPACE'      | 'UPDATEREDIRECTREF'
+        | 'MOVE'             | 'VERSION-CONTROL'
 
     export interface MethodList {
         readonly length: number
@@ -662,401 +684,159 @@ declare module 'garage/constants' {
         | 422 | 423 | 424 | 425 | 426 | 428 | 429 | 431 | 451
         | 500 | 501 | 502 | 503 | 504 | 505 | 506 | 507 | 508 | 509 | 510 | 511
 
-    export type StatusName =
-        | 'CONTINUE'
-        | 'SWITCHING_PROTOCOLS'
-        | 'PROCESSING'
-        | 'EARLY_HINTS'
-        | 'OK'
-        | 'CREATED'
-        | 'ACCEPTED'
-        | 'NON_AUTHORITATIVE_INFORMATION'
-        | 'NO_CONTENT'
-        | 'RESET_CONTENT'
-        | 'PARTIAL_CONTENT'
-        | 'MULTI_STATUS'
-        | 'ALREADY_REPORTED'
-        | 'IM_USED'
-        | 'MULTIPLE_CHOICES'
-        | 'MOVED_PERMANENTLY'
-        | 'FOUND'
-        | 'SEE_OTHER'
-        | 'NOT_MODIFIED'
-        | 'USE_PROXY'
-        | 'TEMPORARY_REDIRECT'
-        | 'PERMANENT_REDIRECT'
-        | 'BAD_REQUEST'
-        | 'UNAUTHORIZED'
-        | 'PAYMENT_REQUIRED'
-        | 'FORBIDDEN'
-        | 'NOT_FOUND'
-        | 'METHOD_NOT_ALLOWED'
-        | 'NOT_ACCEPTABLE'
-        | 'PROXY_AUTHENTICATION_REQUIRED'
-        | 'REQUEST_TIMEOUT'
-        | 'CONFLICT'
-        | 'GONE'
-        | 'LENGTH_REQUIRED'
-        | 'PRECONDITION_FAILED'
-        | 'PAYLOAD_TOO_LARGE'
-        | 'URI_TOO_LONG'
-        | 'UNSUPPORTED_MEDIA_TYPE'
-        | 'RANGE_NOT_SATISFIABLE'
-        | 'EXPECTATION_FAILED'
-        | 'TEAPOT'
-        | 'MISDIRECTED_REQUEST'
-        | 'UNPROCESSABLE_ENTITY'
-        | 'LOCKED'
-        | 'FAILED_DEPENDENCY'
-        | 'TOO_EARLY'
-        | 'UPGRADE_REQUIRED'
-        | 'PRECONDITION_REQUIRED'
-        | 'TOO_MANY_REQUESTS'
-        | 'REQUEST_HEADER_FIELDS_TOO_LARGE'
-        | 'UNAVAILABLE_FOR_LEGAL_REASONS'
-        | 'INTERNAL_SERVER_ERROR'
-        | 'NOT_IMPLEMENTED'
-        | 'BAD_GATEWAY'
-        | 'SERVICE_UNAVAILABLE'
-        | 'GATEWAY_TIMEOUT'
-        | 'HTTP_VERSION_NOT_SUPPORTED'
-        | 'VARIANT_ALSO_NEGOTIATES'
-        | 'INSUFFICIENT_STORAGE'
-        | 'LOOP_DETECTED'
-        | 'BANDWIDTH_LIMIT_EXCEEDED'
-        | 'NOT_EXTENDED'
-        | 'NETWORK_AUTHENTICATION_REQUIRED'
+    export type StatusErr = Pick<Status, ErrorStatusCode>
 
     export interface Status {
-        readonly [key: string]: string | number
         readonly [key: number]: string
-
-        readonly CONTINUE: 100
         readonly 100: 'continue'
-        readonly SWITCHING_PROTOCOLS: 101
         readonly 101: 'switching protocols'
-        readonly PROCESSING: 102
         readonly 102: 'processing'
-        readonly EARLY_HINTS: 103
         readonly 103: 'early hints'
-        readonly OK: 200
         readonly 200: 'ok'
-        readonly CREATED: 201
         readonly 201: 'created'
-        readonly ACCEPTED: 202
         readonly 202: 'accepted'
-        readonly NON_AUTHORITATIVE_INFORMATION: 203
         readonly 203: 'non authoritative information'
-        readonly NO_CONTENT: 204
         readonly 204: 'no content'
-        readonly RESET_CONTENT: 205
         readonly 205: 'reset content'
-        readonly PARTIAL_CONTENT: 206
         readonly 206: 'partial content'
-        readonly MULTI_STATUS: 207
         readonly 207: 'multi status'
-        readonly ALREADY_REPORTED: 208
         readonly 208: 'already reported'
-        readonly IM_USED: 226
         readonly 226: 'im used'
-        readonly MULTIPLE_CHOICES: 300
         readonly 300: 'multiple choices'
-        readonly MOVED_PERMANENTLY: 301
         readonly 301: 'moved permanently'
-        readonly FOUND: 302
         readonly 302: 'found'
-        readonly SEE_OTHER: 303
         readonly 303: 'see other'
-        readonly NOT_MODIFIED: 304
         readonly 304: 'not modified'
-        readonly USE_PROXY: 305
         readonly 305: 'use proxy'
-        readonly TEMPORARY_REDIRECT: 307
         readonly 307: 'temporary redirect'
-        readonly PERMANENT_REDIRECT: 308
         readonly 308: 'permanent redirect'
-        readonly BAD_REQUEST: 400
         readonly 400: 'bad request'
-        readonly UNAUTHORIZED: 401
         readonly 401: 'unauthorized'
-        readonly PAYMENT_REQUIRED: 402
         readonly 402: 'payment required'
-        readonly FORBIDDEN: 403
         readonly 403: 'forbidden'
-        readonly NOT_FOUND: 404
         readonly 404: 'not found'
-        readonly METHOD_NOT_ALLOWED: 405
         readonly 405: 'method not allowed'
-        readonly NOT_ACCEPTABLE: 406
         readonly 406: 'not acceptable'
-        readonly PROXY_AUTHENTICATION_REQUIRED: 407
         readonly 407: 'proxy authentication required'
-        readonly REQUEST_TIMEOUT: 408
         readonly 408: 'request timeout'
-        readonly CONFLICT: 409
         readonly 409: 'conflict'
-        readonly GONE: 410
         readonly 410: 'gone'
-        readonly LENGTH_REQUIRED: 411
         readonly 411: 'length required'
-        readonly PRECONDITION_FAILED: 412
         readonly 412: 'precondition failed'
-        readonly PAYLOAD_TOO_LARGE: 413
         readonly 413: 'payload too large'
-        readonly URI_TOO_LONG: 414
         readonly 414: 'uri too long'
-        readonly UNSUPPORTED_MEDIA_TYPE: 415
         readonly 415: 'unsupported media type'
-        readonly RANGE_NOT_SATISFIABLE: 416
         readonly 416: 'range not satisfiable'
-        readonly EXPECTATION_FAILED: 417
         readonly 417: 'expectation failed'
-        readonly TEAPOT: 418
         readonly 418: 'teapot'
-        readonly MISDIRECTED_REQUEST: 421
         readonly 421: 'misdirected request'
-        readonly UNPROCESSABLE_ENTITY: 422
         readonly 422: 'unprocessable entity'
-        readonly LOCKED: 423
         readonly 423: 'locked'
-        readonly FAILED_DEPENDENCY: 424
         readonly 424: 'failed dependency'
-        readonly TOO_EARLY: 425
         readonly 425: 'too early'
-        readonly UPGRADE_REQUIRED: 426
         readonly 426: 'upgrade required'
-        readonly PRECONDITION_REQUIRED: 428
         readonly 428: 'precondition required'
-        readonly TOO_MANY_REQUESTS: 429
         readonly 429: 'too many requests'
-        readonly REQUEST_HEADER_FIELDS_TOO_LARGE: 431
         readonly 431: 'request header fields too large'
-        readonly UNAVAILABLE_FOR_LEGAL_REASONS: 451
         readonly 451: 'unavailable for legal reasons'
-        readonly INTERNAL_SERVER_ERROR: 500
         readonly 500: 'internal server error'
-        readonly NOT_IMPLEMENTED: 501
         readonly 501: 'not implemented'
-        readonly BAD_GATEWAY: 502
         readonly 502: 'bad gateway'
-        readonly SERVICE_UNAVAILABLE: 503
         readonly 503: 'service unavailable'
-        readonly GATEWAY_TIMEOUT: 504
         readonly 504: 'gateway timeout'
-        readonly HTTP_VERSION_NOT_SUPPORTED: 505
         readonly 505: 'http version not supported'
-        readonly VARIANT_ALSO_NEGOTIATES: 506
         readonly 506: 'variant also negotiates'
-        readonly INSUFFICIENT_STORAGE: 507
         readonly 507: 'insufficient storage'
-        readonly LOOP_DETECTED: 508
         readonly 508: 'loop detected'
-        readonly BANDWIDTH_LIMIT_EXCEEDED: 509
         readonly 509: 'bandwidth limit exceeded'
-        readonly NOT_EXTENDED: 510
         readonly 510: 'not extended'
-        readonly NETWORK_AUTHENTICATION_REQUIRED: 511
         readonly 511: 'network authentication required'
     }
 
-    export type StatusErr = Pick<Status, ErrorStatusCode>
-
-    export type SysErrKey =
-        | 'E2BIG'
-        | 'EACCES'
-        | 'EADDRINUSE'
-        | 'EADDRNOTAVAIL'
-        | 'EAFNOSUPPORT'
-        | 'EAGAIN'
-        | 'EAI_ADDRFAMILY'
-        | 'EAI_AGAIN'
-        | 'EAI_BADFLAGS'
-        | 'EAI_BADHINTS'
-        | 'EAI_CANCELED'
-        | 'EAI_FAIL'
-        | 'EAI_FAMILY'
-        | 'EAI_MEMORY'
-        | 'EAI_NODATA'
-        | 'EAI_NONAME'
-        | 'EAI_OVERFLOW'
-        | 'EAI_PROTOCOL'
-        | 'EAI_SERVICE'
-        | 'EAI_SOCKTYPE'
-        | 'EALREADY'
-        | 'EBADF'
-        | 'EBUSY'
-        | 'ECANCELED'
-        | 'ECHARSET'
-        | 'ECONNABORTED'
-        | 'ECONNREFUSED'
-        | 'ECONNRESET'
-        | 'EDESTADDRREQ'
-        | 'EEXIST'
-        | 'EFAULT'
-        | 'EFBIG'
-        | 'EHOSTUNREACH'
-        | 'EINTR'
-        | 'EINVAL'
-        | 'EIO'
-        | 'EISCONN'
-        | 'EISDIR'
-        | 'ELOOP'
-        | 'EMFILE'
-        | 'EMSGSIZE'
-        | 'ENAMETOOLONG'
-        | 'ENETDOWN'
-        | 'ENETUNREACH'
-        | 'ENFILE'
-        | 'ENOBUFS'
-        | 'ENODEV'
-        | 'ENOENT'
-        | 'ENOMEM'
-        | 'ENONET'
-        | 'ENOPROTOOPT'
-        | 'ENOSPC'
-        | 'ENOSYS'
-        | 'ENOTCONN'
-        | 'ENOTDIR'
-        | 'ENOTEMPTY'
-        | 'ENOTSOCK'
-        | 'ENOTSUP'
-        | 'EOVERFLOW'
-        | 'EPERM'
-        | 'EPIPE'
-        | 'EPROTO'
-        | 'EPROTONOSUPPORT'
-        | 'EPROTOTYPE'
-        | 'ERANGE'
-        | 'EROFS'
-        | 'ESHUTDOWN'
-        | 'ESPIPE'
-        | 'ESRCH'
-        | 'ETIMEDOUT'
-        | 'ETXTBSY'
-        | 'EXDEV'
-        | 'UNKNOWN'
-        | 'EOF'
-        | 'ENXIO'
-        | 'EMLINK'
-        | 'EHOSTDOWN'
-        | 'EREMOTEIO'
-        | 'ENOTTY'
-        | 'EFTYPE'
-        | 'EILSEQ'
-        | 'ESOCKTNOSUPPORT'
-        | 'ENODATA'
-        | 'EUNATCH'
-        | 'ENOEXEC'
-
-    export interface SysErr<K extends SysErrKey = SysErrKey> {
-        readonly errno: number
-        readonly key: K
-        readonly msg: string
-    }
-
-    export type SysErrMap =
-        & { readonly [key: number]: SysErr }
-        & { readonly [key in SysErrKey]: SysErr<key> }
-
-    export type MimeType =
-        | 'application/font-woff'
-        | 'application/font-woff2'
-        | 'application/javascript'
-        | 'application/json'
-        | 'application/octet-stream'
-        | 'application/x-font-bdf'
-        | 'application/x-font-otf'
-        | 'application/x-font-pcf'
-        | 'application/x-font-snf'
-        | 'application/x-font-ttf'
-        | 'application/x-www-form-urlencoded'
-        | 'application/zip'
-        | 'image/gif'
-        | 'image/jpeg'
-        | 'image/png'
-        | 'image/svg+xml'
-        | 'image/webp'
-        | 'image/x-icon'
-        | 'multipart/form-data'
-        | 'text/css'
-        | 'text/csv'
-        | 'text/event-stream'
-        | 'text/html'
-        | 'text/plain'
-        | 'text/x-markdown'
-        | 'text/xml'
-
     export type Mime = Record<string, string> & {
-        readonly 'application/font-woff': 'application/font-woff'
-        readonly 'application/font-woff2': 'application/font-woff2'
-        readonly 'application/javascript': 'application/javascript'
-        readonly 'application/json': 'application/json'
-        readonly 'application/octet-stream': 'application/octet-stream'
         readonly 'application/x-font-bdf': 'application/x-font-bdf'
         readonly 'application/x-font-otf': 'application/x-font-otf'
         readonly 'application/x-font-pcf': 'application/x-font-pcf'
         readonly 'application/x-font-snf': 'application/x-font-snf'
         readonly 'application/x-font-ttf': 'application/x-font-ttf'
-        readonly 'application/x-www-form-urlencoded': 'application/x-www-form-urlencoded'
-        readonly 'application/zip': 'application/zip'
-        readonly bdf: 'application/x-font-bdf'
-        readonly bin: 'application/octet-stream'
-        readonly buffer: 'application/octet-stream'
-        readonly css: 'text/css'
-        readonly csv: 'text/csv'
-        readonly dmg: 'application/octet-stream'
-        readonly form: 'multipart/form-data'
-        readonly gif: 'image/gif'
-        readonly html: 'text/html'
-        readonly ico: 'image/x-icon'
-        readonly 'image/gif': 'image/gif'
-        readonly 'image/jpeg': 'image/jpeg'
-        readonly 'image/png': 'image/png'
-        readonly 'image/svg+xml': 'image/svg+xml'
-        readonly 'image/webp': 'image/webp'
-        readonly 'image/x-icon': 'image/x-icon'
-        readonly img: 'application/octet-stream'
-        readonly iso: 'application/octet-stream'
-        readonly jpeg: 'image/jpeg'
-        readonly jpg: 'image/jpeg'
-        readonly js: 'application/javascript'
-        readonly json: 'application/json'
-        readonly map: 'application/json'
-        readonly md: 'text/x-markdown'
-        readonly mjs: 'application/javascript'
-        readonly multipart: 'multipart/form-data'
-        readonly 'multipart/form-data': 'multipart/form-data'
-        readonly otf: 'application/x-font-otf'
-        readonly pcf: 'application/x-font-pcf'
-        readonly png: 'image/png'
-        readonly query: 'application/x-www-form-urlencoded'
-        readonly snf: 'application/x-font-snf'
-        readonly sse: 'text/event-stream'
-        readonly svg: 'image/svg+xml'
-        readonly svgz: 'image/svg+xml'
-        readonly tar: 'application/zip'
-        readonly text: 'text/plain'
-        readonly 'text/css': 'text/css'
-        readonly 'text/csv': 'text/csv'
+        readonly 'application/font-woff' : 'application/font-woff'
+        readonly 'application/font-woff2': 'application/font-woff2'
+
+        readonly 'image/jpeg'     : 'image/jpeg'
+        readonly 'image/gif'      : 'image/gif'
+        readonly 'image/png'      : 'image/png'
+        readonly 'image/svg+xml'  : 'image/svg+xml'
+        readonly 'image/webp'     : 'image/webp'
+        readonly 'image/x-icon'   : 'image/x-icon'
+
+        readonly 'text/plain'       : 'text/plain'
+        readonly 'text/html'        : 'text/html'
+        readonly 'text/xml'         : 'text/xml'
+        readonly 'text/css'         : 'text/css'
+        readonly 'text/csv'         : 'text/csv'
+        readonly 'text/x-markdown'  : 'text/x-markdown'
         readonly 'text/event-stream': 'text/event-stream'
-        readonly 'text/html': 'text/html'
-        readonly 'text/plain': 'text/plain'
-        readonly 'text/x-markdown': 'text/x-markdown'
-        readonly 'text/xml': 'text/xml'
-        readonly ttc: 'application/x-font-ttf'
-        readonly ttf: 'application/x-font-ttf'
-        readonly txt: 'text/plain'
-        readonly url: 'application/x-www-form-urlencoded'
-        readonly webp: 'image/webp'
-        readonly woff: 'application/font-woff'
-        readonly woff2: 'application/font-woff2'
-        readonly xml: 'text/xml'
-        readonly zip: 'application/zip'
+
+        readonly 'application/zip'         : 'application/zip'
+        readonly 'application/octet-stream': 'application/octet-stream'
+
+        readonly 'application/json'      : 'application/json'
+        readonly 'application/javascript': 'application/javascript'
+
+
+        readonly 'application/x-www-form-urlencoded': 'application/x-www-form-urlencoded'
+        readonly 'multipart/form-data'              : 'multipart/form-data'
+
+        readonly multipart: 'multipart/form-data'
+        readonly form     : 'multipart/form-data'
+
+        readonly url   : 'application/x-www-form-urlencoded'
+        readonly query : 'application/x-www-form-urlencoded'
+
+        readonly zip   : 'application/zip'
+        readonly tar   : 'application/zip'
+
+        readonly js    : 'application/javascript'
+        readonly mjs   : 'application/javascript'
+        readonly json  : 'application/json'
+        readonly map   : 'application/json'
+
+        readonly dmg   : 'application/octet-stream'
+        readonly img   : 'application/octet-stream'
+        readonly iso   : 'application/octet-stream'
+        readonly bin   : 'application/octet-stream'
+        readonly buffer: 'application/octet-stream'
+
+        readonly bdf   : 'application/x-font-bdf'
+        readonly otf   : 'application/x-font-otf'
+        readonly pcf   : 'application/x-font-pcf'
+        readonly snf   : 'application/x-font-snf'
+        readonly ttc   : 'application/x-font-ttf'
+        readonly ttf   : 'application/x-font-ttf'
+        readonly woff  : 'application/font-woff'
+        readonly woff2 : 'application/font-woff2'
+
+        readonly jpeg  : 'image/jpeg'
+        readonly jpg   : 'image/jpeg'
+        readonly gif   : 'image/gif'
+        readonly png   : 'image/png'
+        readonly svg   : 'image/svg+xml'
+        readonly svgz  : 'image/svg+xml'
+        readonly webp  : 'image/webp'
+        readonly ico   : 'image/x-icon'
+
+        readonly txt   : 'text/plain'
+        readonly text  : 'text/plain'
+        readonly html  : 'text/html'
+        readonly xml   : 'text/xml'
+        readonly css   : 'text/css'
+        readonly csv   : 'text/csv'
+        readonly md    : 'text/x-markdown'
+        readonly sse   : 'text/event-stream'
     }
 
     export const METHOD: MethodList
     export const HEADER: Header
-    export const SYSERR: SysErrMap
     export const STATUS: Status
     export const STATUS_ERR: StatusErr
     export const MIME: Mime

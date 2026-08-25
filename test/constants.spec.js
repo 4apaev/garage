@@ -7,7 +7,6 @@ import {
     MIME,
     STATUS,
     STATUS_ERR,
-    SYSERR,
 } from '../src/constants.js'
 
 describe('constants', () => {
@@ -26,7 +25,7 @@ describe('constants', () => {
     })
 
     it('freezes constants recursively', () => {
-        for (const x of [ HEADER, STATUS, STATUS_ERR, SYSERR, MIME ])
+        for (const x of [ HEADER, STATUS, STATUS_ERR, MIME ])
             assertDeepFrozen(x)
 
         assertDeepFrozen(METHOD.has)
@@ -38,7 +37,6 @@ describe('constants', () => {
         assrt.throws(() => { HEADER.ACCEPT.ENCODING = 'gzip' }, TypeError)
         assrt.throws(() => { STATUS[ 404 ] = 'gone' }, TypeError)
         assrt.throws(() => { STATUS_ERR[ 404 ] = 'lost' }, TypeError)
-        assrt.throws(() => { SYSERR.ENOENT.msg = 'missing' }, TypeError)
     })
 
     it('keeps generated mime aliases and syscall aliases intact', () => {
@@ -49,10 +47,6 @@ describe('constants', () => {
         assrt.equal(MIME.buffer, 'application/octet-stream')
         assrt.equal(MIME.woff2, 'application/font-woff2')
         assrt.equal(MIME[ 'text/html' ], 'text/html')
-
-        assrt.equal(SYSERR.ENOENT, SYSERR[ -2 ])
-        assrt.equal(SYSERR.ENOENT, SYSERR[ 2 ])
-        assrt.equal(SYSERR.ENOENT.key, 'ENOENT')
     })
 })
 
