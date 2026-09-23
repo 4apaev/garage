@@ -39,3 +39,15 @@ app.listen()
 - `Res` extends `http.ServerResponse`
 - `compose(...middleware)` composes koa-style middleware
 - `use(...methods, ...paths, ...middlewares)` builds route middleware with multiple `URLPattern`, http methods and multiple handlers
+
+## disposal
+
+`Garage` and `Sync` support the `using` declaration:
+
+```js
+// closes the server (and drops idle keep-alive sockets) when the block exits
+await using app = Garage.of({ port: 0 }).listen()
+
+// aborts the request when the block exits before it settles
+using rq = Sync.get('/items')
+```

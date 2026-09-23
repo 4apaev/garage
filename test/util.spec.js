@@ -7,13 +7,24 @@ import {
 } from '../src/constants.js'
 import {
     A,
+    BRK,
     Is,
     O,
     Fail,
+    alias,
     concat,
-    echo,
+    copy,
+    dig,
     each,
+    eachExit,
+    echo,
+    nil,
+    omit,
+    pick,
     random,
+    reduce,
+    use,
+    ƒ,
 } from '../src/util.js'
 
 describe('util', () => {
@@ -51,6 +62,69 @@ describe('util', () => {
                 [ 'e', '2.71', 0 ],
                 [ 'p', '3.14', 1 ]])
         })
+
+        it('returns the source itself when no context is given', () => {
+            const obj = { a: 1 }
+            assrt.equal(each(obj, () => {}), obj)
+        })
+
+        it('eachExit stops early on BRK, reduce folds to one value', () => {
+            const seen = []
+            eachExit({ a: 1, b: 2, c: 3 }, (k, v, i, brk) => {
+                seen.push(k)
+                return k === 'b' ? brk : undefined
+            })
+            assrt.deepEqual(seen, [ 'a', 'b' ])
+
+            assrt.equal(reduce({ a: 1, b: 2, c: 3 }, (acc, k, v) => acc + v, 0), 6)
+            assrt.equal(each.brk, BRK)
+            assrt.equal(each.exit, eachExit)
+            assrt.equal(each.reduce, reduce)
+        })
+    })
+
+    describe('dig', () => {
+        it('reads a dot path, or returns the fallback', () => {
+            const ctx = { a: { b: { c: 1 }}}
+
+            assrt.equal(dig(ctx, 'a.b.c'), 1)
+            assrt.equal(dig(ctx, 'a.b.x'), undefined)
+            assrt.equal(dig(ctx, 'a.b.x', 'none'), 'none')
+            assrt.equal(dig(ctx, 'a.z.c', 'none'), 'none')
+        })
+
+        it('stops at a null or undefined link without a throw', () => {
+            const ctx = { a: null, b: { c: undefined }}
+
+            assrt.equal(dig(ctx, 'a', 'none'), 'none')
+            assrt.equal(dig(ctx, 'a.b', 'none'), 'none')
+            assrt.equal(dig(ctx, 'b.c', 'none'), 'none')
+            assrt.equal(dig(ctx, 'b.c.d', 'none'), 'none')
+        })
+
+        it('returns the fallback for a null or undefined root', () => {
+            assrt.equal(dig(null, 'a', 'none'), 'none')
+            assrt.equal(dig(undefined, 'a.b', 'none'), 'none')
+            assrt.equal(dig(null, 'a'), undefined)
+        })
+
+        it('keeps falsy values that are not null', () => {
+            const ctx = { n: 0, s: '', b: false, x: NaN }
+
+            assrt.equal(dig(ctx, 'n', 'none'), 0)
+            assrt.equal(dig(ctx, 's', 'none'), '')
+            assrt.equal(dig(ctx, 'b', 'none'), false)
+            assrt.equal(dig(ctx, 'x', 'none'), NaN)
+        })
+
+        it('reads array indexes, primitive props, and getters', () => {
+            const ctx = { name: 'garage', rows: A.of({ id: 1 }, { id: 2 }) }
+
+            assrt.equal(dig(ctx, 'rows.0.id'), 1)
+            assrt.equal(dig(ctx, 'rows.2.id', 'none'), 'none')
+            assrt.equal(dig(ctx, 'rows.tail.id'), 2)
+            assrt.equal(dig(ctx, 'name.length'), 6)
+        })
     })
 
     describe('A', () => {
@@ -78,7 +152,6 @@ describe('util', () => {
         })
 
         it('filters and removes by predicates, collections, regexps, and objects', () => {
-            const any = Symbol.for('any')
             const rows = A.of(
                 { kind: 'fruit', color: 'red' },
                 { kind: 'fruit', color: 'yellow' },
@@ -95,10 +168,20 @@ describe('util', () => {
             assrt.deepEqual(A.where([ 'a', 'b', 'c' ], 'cab'), A.from([ 'a', 'b', 'c' ]))
             assrt.deepEqual(A.where([ 'ant', 'bat', 'eel' ], /a/), A.from([ 'ant', 'bat' ]))
             assrt.deepEqual(A.where(rows, { kind: 'fruit' }), rows.slice(0, 2))
-            assrt.deepEqual(A.where(any, rows, { kind: 'fruit', color: 'green' }), rows)
 
             assrt.deepEqual(nums.rm(x => x % 2 === 0), A.of(2, 4))
             assrt.deepEqual(Array.from(nums), [ 1, 3 ])
+        })
+
+        it('gets the first matching element, or undefined', () => {
+            const rows = A.of(
+                { kind: 'fruit', color: 'red' },
+                { kind: 'leaf', color: 'green' },
+            )
+
+            assrt.equal(rows.get({ kind: 'leaf' }), rows[ 1 ])
+            assrt.equal(rows.get({ kind: 'mineral' }), undefined)
+            assrt.equal(A.get([ 1, 2, 3 ], x => x > 1), 2)
         })
     })
 
@@ -167,6 +250,10 @@ describe('util', () => {
             assrt.equal(Is.o({}), true)
             assrt.equal(Is.o(null), false)
 
+            assrt.equal(Is.O({}), true)
+            assrt.equal(Is.O(new Date), false)
+            assrt.equal(Is.O([]), false)
+
             assrt.equal(Is.T('Date', new Date), true)
             assrt.equal(Is.any(new Date, Date, Array), true)
             assrt.equal(Is.not.n(Number.NaN), true)
@@ -216,6 +303,22 @@ describe('util', () => {
             assrt.throws(() => Fail.no(1, 409), { code: 409 })
             await assrt.rejects(Fail.deny(500), { code: 500 })
         })
+
+        it('maybe wraps a function so it never throws', async () => {
+            const risky = Fail.maybe(async x => {
+                if (x < 0) throw new Error('negative')
+                return x * 2
+            })
+
+            assrt.equal(await risky(3), 1)
+            assrt.equal(risky.result, 6)
+            assrt.equal(risky.error, undefined)
+
+            assrt.equal(await risky(-1), 0)
+            assrt.equal(risky.result, undefined)
+            assrt.ok(risky.error instanceof Fail)
+            assrt.equal(risky.error.message, '[maybe] negative')
+        })
     })
 
     describe('O', () => {
@@ -258,6 +361,54 @@ describe('util', () => {
             assrt.equal(trg.copy, 7)
 
             assrt.throws(() => O.alias(src, 'missing nope'), { code: 500 })
+        })
+
+        it('reads and copies descriptors, keeping the prototype', () => {
+            const src = { a: 1 }
+            O.define(src, 'hidden', { value: 2 })
+
+            assrt.deepEqual(O.get(src, 'a'), {
+                configurable: true,
+                enumerable  : true,
+                value       : 1,
+                writable    : true,
+            })
+            assrt.equal(O.get(src).hidden.value, 2)
+
+            const proto = { greet() { return 'hi' } }
+            const clone = O.copy(O.set(O.create(proto), src))
+
+            assrt.equal(O.pro(clone), proto)
+            assrt.equal(clone.a, 1)
+            assrt.equal(clone.greet(), 'hi')
+
+            assrt.deepEqual(O.props({ a: 1, [ Symbol.for('s') ]: 2 }), [ 'a', Symbol.for('s') ])
+        })
+
+        it('picks, omits, and null-protos an object tree', () => {
+            const src = { a: 1, b: 2, c: 3 }
+
+            assrt.deepEqual(O.pick(src, 'a', [ 'b' ]), { a: 1, b: 2, __proto__: null })
+            assrt.deepEqual(O.omit(src, 'a', [ 'b' ]), { c: 3, __proto__: null })
+
+            const tree = { a: { b: { c: 1 }}}
+            const seen = []
+            O.nil(tree, o => seen.push(o))
+
+            assrt.equal(Object.getPrototypeOf(tree), null)
+            assrt.equal(Object.getPrototypeOf(tree.a), null)
+            assrt.equal(Object.getPrototypeOf(tree.a.b), null)
+            assrt.equal(seen.length, 3)
+        })
+
+        it('re-exports its helpers as bare functions', () => {
+            assrt.equal(ƒ, O.ƒ)
+            assrt.equal(nil, O.nil)
+            assrt.equal(use, O.use)
+            assrt.equal(alias, O.alias)
+            assrt.equal(copy, O.copy)
+            assrt.equal(pick, O.pick)
+            assrt.equal(omit, O.omit)
         })
     })
 

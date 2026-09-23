@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import * as assrt       from 'node:assert/strict'
 
-import Sync from '../src/sync.js'
+import Sync, { SyncSilent } from '../src/sync.js'
 
 describe('sync', () => {
     it('builds urls, headers, query params, and request bodies', () => {
@@ -37,6 +37,12 @@ describe('sync', () => {
         assrt.equal(post.get('x-one'), '1')
         assrt.equal(post.get('x-two'), '2')
         assrt.equal(post.get('x-many'), 'a, b')
+
+        assrt.equal(rq.auth(), '')
+        assrt.equal(rq.auth('token123'), rq)
+        assrt.equal(rq.auth(), 'Bearer token123')
+        assrt.equal(rq.auth('Bearer already'), rq)
+        assrt.equal(rq.auth(), 'Bearer already')
     })
 
     it('passes fetch options and parses json and text responses', async t => {
@@ -162,5 +168,45 @@ describe('sync', () => {
 
         assrt.equal(ended, 'OK')
         assrt.equal(thened, 200)
+    })
+
+    it('aborts the pending request when leaving a `using` block', () => {
+        let signal
+
+        {
+            using rq = Sync.get('/items')
+            signal = rq.signal
+            assrt.equal(signal.aborted, false)
+        }
+
+        assrt.equal(signal.aborted, true)
+    })
+
+    describe('SyncSilent', () => {
+        it('resolves instead of rejecting on a non-2xx response', async t => {
+            t.mock.method(globalThis, 'fetch', async () => new Response('nope', {
+                headers: { 'content-type': 'text/plain' },
+                status : 404,
+            }))
+
+            const rq = SyncSilent.get('/missing')
+            assrt.ok(rq instanceof SyncSilent)
+
+            const pay = await rq
+            assrt.equal(pay.ok, false)
+            assrt.equal(pay.status, 404)
+            assrt.equal(pay.body, 'nope')
+        })
+
+        it('still resolves a successful response normally', async t => {
+            t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ ok: true }), {
+                headers: { 'content-type': 'application/json' },
+                status : 200,
+            }))
+
+            const pay = await SyncSilent.post('/items', { ok: true })
+            assrt.equal(pay.ok, true)
+            assrt.deepEqual(pay.body, { ok: true })
+        })
     })
 })

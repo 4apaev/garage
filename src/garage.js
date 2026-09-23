@@ -60,15 +60,24 @@ export default class Garage extends EventEmitter {
     }
 
     init() {
+        this.server && Fail.raise(500, 'garage already initialized')
         this.middleware = compose(this.mware).bind(this)
-        this.server ??= Garage.create(this.request)
-        return this.server
+        return this.server = Garage.create(this.request)
     }
 
     listen(port = this.options.port) {
         this.server ??= this.init()
         this.server.listen(port, () => {
             console.table(this.options)
+        })
+        return this
+    }
+
+    [ Symbol.asyncDispose ]() {
+        if (!this.server) return
+        return new Promise(ok => {           // plain server.close() can hang on
+            this.server.close(ok)            // idle keep-alive sockets, so drop
+            this.server.closeAllConnections() // them too
         })
     }
 

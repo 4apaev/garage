@@ -1,4 +1,5 @@
-import { O, Is, Fail, each } from './util.js'
+import { O, Is, Fail, each, echo } from './util.js'
+import { METHOD } from './constants.js'
 
 import * as Mim from './mime.js'
 
@@ -12,7 +13,7 @@ export default class Sync {
     aborter = new AbortController
 
     constructor(method, url, data) {
-        this.url    = /^https?:/i.test(url ??= '/')
+        this.url = /^https?:/i.test(url ??= '/')
             ? new URL(url)
             : new URL(url, new.target.base)
 
@@ -20,49 +21,88 @@ export default class Sync {
         data && this.send(data)
     }
 
-    get params()  { return O.of(this.url.searchParams) }
-    get signal()  { return this.aborter.signal }
+    get params() { return O.of(this.url.searchParams) }
+    get signal() { return this.aborter.signal }
 
-    type(x) { return x ? this.set('content-type', Mim.get(x, x)) : this.get('content-type') }
-    size(x) { return x ? this.set('content-length', x) : 0 | this.get('content-length') }
+    auth(x) {
+        return x
+            ? this.set('authorization', x.includes('Bearer ') ? x : `Bearer ${ x }`)
+            : this.get('authorization')
+    }
 
-    has(k) { return this.head.has(k)       }
-    get(k) { return this.head.get(k) ?? '' }
-    append(k, v) { return this.head.append(k, v) }
+    type(x) {
+        return x
+            ? this.set('content-type', Mim.get(x, x))
+            : this.get('content-type')
+    }
+
+    size(x) {
+        return x
+            ? this.set('content-length', x)
+            : 0 | this.get('content-length')
+    }
+
+    has(k) {
+        return this.head.has(k)
+    }
+
+    get(k) {
+        return this.head.get(k) ?? ''
+    }
+
+    append(k, v) {
+        return this.head.append(k, v)
+    }
+
     set(k, v) {
         if (Is.x(k))
-            return each(k, this.set, this)
+            return each(k, (a, b) => this.set(a, b), this)
         this.head.set(k, v)
         return this
     }
 
     query(k, v) {
-        if (k == null) return this
-        if (Is.x(k)) return each(k, this.query, this)
+        if (k == null)
+            return this
+
+        if (Is.x(k))
+            return each(k, this.query, this)
+
+        const sp = this.url.searchParams
         Is.a(v)
-            ? v.forEach(x => this.url.searchParams.append(k, x))
-            : this.url.searchParams.has(k)
-                ? this.url.searchParams.append(k, v)
-                : this.url.searchParams.set(k, v)
+            ? v.forEach(x => sp.append(k, x))
+            : sp.has(k)
+                ? sp.append(k, v)
+                : sp.set(k, v)
         return this
     }
 
     json(x) {
-        return this.type('json', this.body = JSON.stringify(x))
+        this.body = JSON.stringify(x)
+        return this.type('json', this.body)
     }
 
     send(x) {
-        if (x == null)                         return this
-        if (/^(GET|HEAD)$/i.test(this.method)) return this.query(x)
-        if (Is.x(x))                           return this.json(x)
-        if (x != null)                                this.body = String(x)
+
+        if (x == null)                     return this
+        if (METHOD.empty.has(this.method)) return this.query(x)
+        if (Is.x(x))                       return this.json(x)
+        if (x != null) this.body = String(x)
         return this
     }
 
-    abort(cause)   { return this.aborter.abort(cause), this }
-    then(ok, nope) { return this.end(ok, nope) }
+    abort(cause) {
+        this.aborter.abort(cause)
+        return this
+    }
 
-    end(ok, nope)  {
+    [ Symbol.dispose ]() { this.abort() }
+
+    then(ok, nope) {
+        return this.end(ok, nope)
+    }
+
+    end(ok, nope) {
         if (this.signal.aborted)                // once aborted, сignal stays aborted forever
             this.aborter = new AbortController  // so create new aborter to reset
 
@@ -80,6 +120,18 @@ export default class Sync {
     }
 
     parse = async rs => {
+        const pay = this.payload = await Sync.parse(rs)
+        return pay.ok && !pay.error
+            ? pay
+            : Promise.reject(pay)
+    }
+
+    static get(u, x) { return new this('get', u, x) }
+    static put(u, x) { return new this('put', u, x) }
+    static post(u, x) { return new this('post', u, x) }
+    static del(u, x) { return new this('delete', u, x) }
+
+    static async parse(rs) {
         const pay = {
             rs,
             ok    : rs.ok,
@@ -95,14 +147,13 @@ export default class Sync {
         catch (e) {
             pay.error = new Fail(pay.code = 400, e.message, e)
         }
-        this.payload = pay
-        return pay.ok && !pay.error
-            ? pay
-            : Promise.reject(pay)
+        return pay
     }
+}
 
-    static get(u, x)  { return new Sync('get', u, x) }
-    static put(u, x)  { return new Sync('put', u, x) }
-    static post(u, x) { return new Sync('post', u, x) }
-    static del(u, x)  { return new Sync('delete', u, x) }
+export class SyncSilent extends Sync {
+    name = 'SyncSilent'
+
+    end = (ok, nope = echo) => super.end(ok, nope ?? echo)
+    parse = async rs => this.payload = await this.constructor.parse(rs)
 }

@@ -13,12 +13,12 @@ import {
     Res,
     Garage,
 } from '../src/index.js'
-import { Fail } from '../src/util.js'
+import { Fail, echo } from '../src/util.js'
 import { start, stop } from './server.js'
 
 describe('garage', () => {
     it('creates a node http server with garage request and response classes', () => {
-        const server = Garage.create(() => {})
+        const server = Garage.create(echo)
 
         ok(server instanceof Http.Server)
         equal(server[ Symbol.asyncDispose ] instanceof Function, true)
@@ -96,6 +96,38 @@ describe('garage', () => {
             t.mock.reset()
             await stop(app)
         }
+    })
+
+    it('closes the server on async dispose', async t => {
+        t.mock.method(console, 'table')
+
+        const app = Garage.of({ name: 'shop', port: 0 }).listen()
+        await once(app.server, 'listening')
+
+        const server = app.server
+        ok(server.listening)
+
+        await app[ Symbol.asyncDispose ]()
+        ok(!server.listening)
+    })
+
+    it('closes the server when leaving an `await using` block', async t => {
+        t.mock.method(console, 'table')
+        let server
+
+        {
+            await using app = Garage.of({ name: 'shop', port: 0 }).listen()
+            await once(app.server, 'listening')
+            server = app.server
+            ok(server.listening)
+        }
+
+        ok(!server.listening)
+    })
+
+    it('is a no-op to dispose an app that never listened', async () => {
+        const app = Garage.of({ name: 'shop', port: 0 })
+        await app[ Symbol.asyncDispose ]()
     })
 
     it('routes by method and url pattern', async () => {

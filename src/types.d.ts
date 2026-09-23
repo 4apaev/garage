@@ -31,7 +31,8 @@ declare module 'garage' {
         onerror(e: Fail, rq: Req, rs: Res, app: Garage): unknown
         request(rq: Req, rs: Res): Promise<unknown>
         init(): Server
-        listen(port?: string | number): void
+        listen(port?: string | number): this
+        [Symbol.asyncDispose](): Promise<void> | undefined
         get(...args: Array<string | MWare>): this
         put(...args: Array<string | MWare>): this
         post(...args: Array<string | MWare>): this
@@ -182,10 +183,10 @@ declare module 'garage/mw/ws' {
     import type { IncomingMessage } from 'node:http'
     import type { Duplex } from 'node:stream'
 
-    /** the fixed rfc 6455 handshake guid, identical on every websocket server */
-    export const MAGIC: '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
-    /** frame opcodes: 0x0-0x7 data, 0x8-0xf control */
+    export const MAGIC: '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'  // the fixed rfc 6455 handshake guid, identical on every websocket server
+
+    // frame opcodes: 0x0-0x7 data, 0x8-0xf control
     export const OP: {
         cont : 0x0
         text : 0x1
@@ -195,27 +196,23 @@ declare module 'garage/mw/ws' {
         pong : 0xA
     }
 
-    /** base64(sha1(key + MAGIC)) - the Sec-WebSocket-Accept value for a client key */
-    export function acceptKey(key: string): string
+    export function acceptKey(key: string): string           // base64(sha1(key + MAGIC)) - the Sec-WebSocket-Accept value for a client key
 
     export interface FrameOptions {
-        /** one of OP.* - default OP.text */
-        opcode?: number
-        /** true = act as a client: set the MASK bit, XOR the payload */
-        mask?: boolean
+        opcode?: number      // one of OP.* - default OP.text
+        mask?: boolean       // true = act as a client: set the MASK bit, XOR the payload
     }
 
-    /** one complete wire frame, FIN always set (no fragmentation) */
+    // one complete wire frame, FIN always set (no fragmentation)
     export function encodeFrame(payload: Buffer | string, opt?: FrameOptions): Buffer
 
-    /** a parsed frame - payload already unmasked */
+    // a parsed frame - payload already unmasked
     export interface Frame {
-        fin: boolean
-        opcode: number
-        masked: boolean
+        fin    : boolean
+        opcode : number
+        masked : boolean
         payload: Buffer
-        /** total bytes this frame took on the wire - header + key + payload */
-        size: number
+        size   : number // total bytes this frame took on the wire - header + key + payload
     }
 
     export interface FrameParser {
@@ -226,22 +223,20 @@ declare module 'garage/mw/ws' {
     export function createFrameParser(onFrame: (frame: Frame) => unknown): FrameParser
 
     export interface WssOptions<Meta = unknown> {
-        /** returns per-connection metadata, or throws/rejects to send a plain 401 before the 101 */
+        /**
+         * returns per-connection metadata,
+         * or throws/rejects to send a plain 401 before the 101
+         */
         authenticate?(rq: IncomingMessage): Meta | Promise<Meta>
-        /** keepalive interval in ms - default 30000 */
-        ping?: number
+        ping?: number // keepalive interval in ms - default 30000
     }
 
     export interface Wss<Meta = unknown> {
-        /** wire to `server.on('upgrade')` - answers 101 or a plain http refusal */
-        handleUpgrade(rq: IncomingMessage, socket: Duplex): void
-        /** guarded raw write of an already-encoded frame (see encodeFrame) */
-        send(socket: Duplex, frame: Buffer): void
-        /** iterate live connections with their authenticate() metadata */
-        each(fn: (meta: Meta, socket: Duplex) => void): void
+        handleUpgrade(rq: IncomingMessage, socket: Duplex): void // wire to `server.on('upgrade')` - answers 101 or a plain http refusal
+        send(socket: Duplex, frame: Buffer): void                // guarded raw write of an already-encoded frame (see encodeFrame)
+        each(fn: (meta: Meta, socket: Duplex) => void): void     // iterate live connections with their authenticate() metadata
         stats(): { sockets: number }
-        /** close-frame every socket (1001), stop the heartbeat */
-        close(): void
+        close(): void                                            // close-frame every socket (1001), stop the heartbeat
     }
 
     export default function createWss<Meta = unknown>(opt?: WssOptions<Meta>): Wss<Meta>
@@ -282,6 +277,9 @@ declare module 'garage/sync' {
         get params(): Record<PropertyKey, string>
         get signal(): AbortSignal
 
+        auth(): string
+        auth(x: string): this
+
         type(): string
         type(x: string): this
 
@@ -302,6 +300,7 @@ declare module 'garage/sync' {
         json(x: unknown): this
         send(x?: unknown): this
         abort(cause?: unknown): this
+        [Symbol.dispose](): void
 
         then<TRok = Payload<T>, TRno = never>(
             ok?:   ((x: Payload<T>) => TRok | PromiseLike<TRok>) | null,
@@ -320,6 +319,9 @@ declare module 'garage/sync' {
         static post<T = unknown>(u?: string | URL, x?: unknown): Sync<T>
         static del<T  = unknown>(u?: string | URL, x?: unknown): Sync<T>
     }
+
+    /** never rejects on a non-2xx response - resolves the Payload either way */
+    export class SyncSilent<T = unknown> extends Sync<T> {}
 }
 
 declare module 'garage/util' {
@@ -350,13 +352,48 @@ declare module 'garage/util' {
         x: Iterable<Tuple<K, V>>,
         fx: (this: C, k: K, v: V, i: number) => unknown,
         ctx?: C,
-    ): C
+    ): C | Iterable<Tuple<K, V>>
 
     export function each<T extends object, C = undefined>(
         x: T,
         fx: (this: C, k: keyof T, v: T[keyof T], i: number) => unknown,
         ctx?: C,
-    ): C
+    ): C | T
+
+    export namespace each {
+        export const brk: unique symbol
+
+        export function exit<K, V, C = undefined>(
+            it: Iterable<Tuple<K, V>>,
+            fn: (this: C, k: K, v: V, i: number, stop: typeof brk) => unknown,
+            ctx?: C,
+        ): C
+        export function exit<T extends object, C = undefined>(
+            it: T,
+            fn: (this: C, k: keyof T, v: T[keyof T], i: number, stop: typeof brk) => unknown,
+            ctx?: C,
+        ): C
+
+        export function reduce<K, V, R, C = undefined>(
+            it: Iterable<Tuple<K, V>>,
+            fn: (this: C, acc: R, k: K, v: V, i: number) => R,
+            acc: R,
+            ctx?: C,
+        ): R
+        export function reduce<T extends object, R, C = undefined>(
+            it: T,
+            fn: (this: C, acc: R, k: keyof T, v: T[keyof T], i: number) => R,
+            acc: R,
+            ctx?: C,
+        ): R
+    }
+
+    export const BRK: typeof each.brk
+    export const eachExit: typeof each.exit
+    export const reduce: typeof each.reduce
+
+    /** reads a dot-separated path off ctx, or flbck if any step is null/undefined */
+    export function dig<T = undefined>(ctx: unknown, path: string, flbck?: T): unknown | T
 
     export class A<T = unknown> extends Array<T> {
         constructor(...items: T[])
@@ -370,32 +407,20 @@ declare module 'garage/util' {
             fx: (this: C, value: T, index: number, array: this) => unknown,
             ctx?: C,
         ): C
-        where(query: AQuery<T>, ctx?: unknown, sym?: symbol): A<T>
-        rm(query: AQuery<T>, ctx?: unknown, sym?: symbol): A<T>
+        where(query: AQuery<T>, ctx?: unknown): A<T>
+        get(query: AQuery<T>, ctx?: unknown): T | undefined
+        rm(query: AQuery<T>, ctx?: unknown): A<T>
 
         static of<T>(...items: T[]): A<T>
         static uniq<T>(a: Iterable<T>): A<T>
         static fill<T = number>(n: number, fx?: (i: number) => T): A<T>
         static prop<K extends PropertyKey>(k: K): <T extends Record<K, unknown>>(x: T) => T[K]
 
-        static pre<T>(query: AQuery<T>, any?: symbol): FQuery<T>
+        static pre<T>(query: AQuery<T>): FQuery<T>
 
-        static where<T>(
-            it: ArrayLike<T>,
-            query: AQuery<T>,
-            ctx?: unknown,
-            sym?: symbol
-        ): A<T>
-
-        static where<T>(
-            sym: symbol,
-            it: ArrayLike<T>,
-            query: AQuery<T>,
-            ctx?: unknown
-        ): A<T>
-
-        static rm<T>(it: T[], query: AQuery<T>, ctx?: unknown, sym?: symbol): A<T>
-        static rm<T>(sym: symbol, it: T[], query: AQuery<T>, ctx?: unknown): A<T>
+        static where<T>(it: ArrayLike<T>, query: AQuery<T>, ctx?: unknown): A<T>
+        static get<T>(it: ArrayLike<T>, query: AQuery<T>, ctx?: unknown): T | undefined
+        static rm<T>(it: T[], query: AQuery<T>, ctx?: unknown): A<T>
     }
 
     export function random(): number
@@ -420,6 +445,7 @@ declare module 'garage/util' {
         export function S(x: unknown): x is symbol
         export function f(x: unknown): x is Function
         export function o(x: unknown): x is object
+        export function O(x: unknown): x is Record<PropertyKey, unknown>
         export function i(x: unknown): x is Iterable<unknown>
         export function I<T>(y: Ctor<T>, x: unknown): x is T
         export function F<T>(y: Ctor<T>, x: unknown): x is T
@@ -444,6 +470,7 @@ declare module 'garage/util' {
             S(x: unknown): boolean
             f(x: unknown): boolean
             o(x: unknown): boolean
+            O(x: unknown): boolean
             i(x: unknown): boolean
 
             I<T>(y: Ctor<T>, x: unknown): boolean
@@ -486,6 +513,17 @@ declare module 'garage/util' {
         static no(x: unknown): false
         static no(x: unknown, msg?: string, cause?: unknown, start?: Fx): false
         static no(x: unknown, code: number, msg?: string, cause?: unknown, start?: Fx): false
+
+        static maybe<T = unknown>(fn: (...a: any[]) => T | PromiseLike<T>, ctx?: unknown): Fail.Maybe<T>
+    }
+
+    export namespace Fail {
+        /** wraps fn so it never throws - call it, then read .result or .error */
+        export interface Maybe<T = unknown> {
+            (...a: unknown[]): Promise<0 | 1>
+            readonly result: T | undefined
+            readonly error: Fail | undefined
+        }
     }
 
     export class O extends Object {
@@ -500,19 +538,42 @@ declare module 'garage/util' {
         static from: typeof Object.fromEntries
         static own: typeof Object.hasOwn
 
+        static set<T extends object, S extends object>(a: T, b: S): T & S
+        static get(a: object): PropertyDescriptorMap
+        static get(a: object, k: PropertyKey): PropertyDescriptor | undefined
+
+        static pro(x: object): object | null
+        static pro<T extends object>(x: T, p: object | null): T
+
+        static copy<T extends object>(x: T): T
+        static props(x: object): PropertyKey[]
         static tuple<K = string, V = unknown>(x: Iterable<Tuple<K, V>> | Record<string, V>): Iterable<Tuple<K, V>>
 
-        static of<V = unknown>(x: Iterable<Tuple<PropertyKey, V>>): Record<PropertyKey, V>
+        static pick<T extends object, K extends keyof T>(o: T, ...keys: Array<K | readonly K[]>): Pick<T, K>
+        static omit<T extends object, K extends keyof T>(o: T, ...keys: Array<K | readonly K[]>): Omit<T, K>
+
+        static of<V = unknown>(x: Iterable<Tuple<PropertyKey, V>> | Record<PropertyKey, V>): Record<PropertyKey, V>
         static ƒ<T extends object = Record<PropertyKey, unknown>>(...a: object[]): T
         static use<T extends object, S extends object>(target: T, source: S): T & S
         static use<T extends object>(...argv: unknown[]): T
 
-        static alias<T extends object>(
+        static alias<T extends object, S extends object = T>(
             src: T,
             alias: string | PropertyKey | PropertyKey[],
-            ...trg: object[]
-        ): T | object
+            trg?: S,
+        ): S
+
+        /** recursively null-protos every plain-object node of x, calling cb on each */
+        static nil<T>(x: T, cb?: (o: object) => unknown): T
     }
+
+    export const ƒ: typeof O.ƒ
+    export const nil: typeof O.nil
+    export const use: typeof O.use
+    export const alias: typeof O.alias
+    export const copy: typeof O.copy
+    export const pick: typeof O.pick
+    export const omit: typeof O.omit
 }
 
 declare module 'garage/constants' {
@@ -541,6 +602,8 @@ declare module 'garage/constants' {
         readonly length: number
         readonly [key: number]: Method
         readonly has: (method: string) => boolean
+        readonly body: Set<Method>
+        readonly empty: Set<Method>
     }
 
     export type HeaderValue = string | HeaderBag

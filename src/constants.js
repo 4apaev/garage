@@ -4,8 +4,11 @@ function ƒ(x) {
     if (Object(x) !== x)
         return x
 
-    for (const k in Object.setPrototypeOf(x, null))
-        ƒ(x[ k ])
+    const tag = toString.call(x)
+    if (tag === '[object Object]' || tag === '[object Array]' || tag === '[object Function]') {
+        for (const k in Object.setPrototypeOf(x, null))
+            ƒ(x[ k ])
+    }
 
     return Object.freeze(x)
 }
@@ -33,6 +36,8 @@ export const METHOD = [
     'PROPFIND',
 ]
 METHOD.has = METHOD.includes.bind(METHOD)
+METHOD.body = new Set([ 'PUT', 'POST', 'DELETE' ])
+METHOD.empty = new Set([ 'GET', 'HEAD', 'TRACE' ])
 
 export const HEADER = {
     PATH     : ':path',
@@ -298,4 +303,37 @@ export const MIME = {
 ƒ(HEADER)
 ƒ(STATUS)
 ƒ(STATUS_ERR)
+
 Object.seal(METHOD)
+
+/*
+export const MTHD = new Map((function * (arr) {
+    for (let k of arr) {
+        let K = k.toUpperCase()
+        yield [ k, K ]
+        yield [ K, K ]
+
+    }
+})(`
+    get           acl
+    put           bind
+    post          baseline-control
+    patch         checkin
+    delete        checkout
+    options       connect
+    head          copy
+    link          proppatch
+    label         rebind
+    lock          report
+    merge         search
+    mkactivity    trace
+    mkcalendar    unbind
+    mkcol         uncheckout
+    mkredirectref unlink
+    mkworkspace   unlock
+    move          update
+    orderpatch    updateredirectref
+    pri           version-control
+    propfind
+`.match(RX)))
+*/

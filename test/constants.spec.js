@@ -24,6 +24,16 @@ describe('constants', () => {
         assrt.throws(() => { METHOD.extra = 'nope' }, TypeError)
     })
 
+    it('groups methods by body/empty, and keeps the sets usable', () => {
+        assrt.equal(METHOD.body.has('POST'), true)
+        assrt.equal(METHOD.body.has('GET'), false)
+
+        assrt.equal(METHOD.empty.has('GET'), true)
+        assrt.equal(METHOD.empty.has('POST'), false)
+
+        assrt.doesNotThrow(() => METHOD.body.has('PUT')) // guards against nulled Set.prototype
+    })
+
     it('freezes constants recursively', () => {
         for (const x of [ HEADER, STATUS, STATUS_ERR, MIME ])
             assertDeepFrozen(x)
