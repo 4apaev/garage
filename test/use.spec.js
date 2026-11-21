@@ -1,5 +1,5 @@
 import { describe, it } from 'node:test'
-import { deepEqual, equal, throws } from 'node:assert/strict'
+import { deepEqual, equal, rejects, throws } from 'node:assert/strict'
 
 import use from '../src/use.js'
 
@@ -82,3 +82,17 @@ function request(path, method = 'GET') {
 function fail() {
     throw new Error('next should not be called')
 }
+
+describe('use params', () => {
+    it('skips optional params that did not match', async () => {
+        const rq = request('/a')
+        await use('/a{/:id}?', () => {})(rq, {}, fail)
+
+        equal('id' in rq.params, false)
+    })
+
+    it('raises 400 on a malformed escape', async () => {
+        const mw = use('/p/:id', () => {})
+        await rejects(async () => mw(request('/p/%E0%A4%A'), {}, fail), { code: 400 })
+    })
+})

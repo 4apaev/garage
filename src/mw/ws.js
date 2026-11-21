@@ -149,9 +149,10 @@ export function encodeFrame(payload, { opcode = OP.text, mask = false } = {}) {
  * frames in a loop, and keeps the remainder for the next chunk.
  *
  * @param  {(frame: Frame) => unknown} onFrame
+ * @param  {{ maxPayload?: number, onOversize?: () => unknown }} [opt]
  * @return {{ push: (chunk: Buffer) => void }}
  */
-export function createFrameParser(onFrame) {
+export function createFrameParser(onFrame, { maxPayload = Infinity, onOversize } = {}) {
     let buf = Buffer.alloc(0)
 
     return {
@@ -160,6 +161,12 @@ export function createFrameParser(onFrame) {
                 ? Buffer.concat([ buf, chunk ])
                 : Buffer.from(chunk)
 
+            // a peer can claim a 2^63 byte frame and drip it in. refuse early
+            if (frameLength(buf) > maxPayload) {
+                buf = Buffer.alloc(0)
+                return onOversize?.()
+            }
+
             let frame
             while (frame = readFrame(buf)) {
                 buf = buf.subarray(frame.size)
@@ -167,6 +174,20 @@ export function createFrameParser(onFrame) {
             }
         },
     }
+}
+
+/**
+ * declared payload length of the frame at the front, or -1 if unknown yet
+ *
+ * @param  {Buffer} bf
+ * @return {number}
+ */
+function frameLength(bf) {
+    if (bf.length < 2) return -1
+    const n = bf[ 1 ] & 0x7f
+    if (n < 126)  return n
+    if (n === 126) return bf.length < 4  ? -1 : bf.readUInt16BE(2)
+    return bf.length < 10 ? -1 : Number(bf.readBigUInt64BE(2))
 }
 
 /**
@@ -242,7 +263,7 @@ function readFrame(bf) {
  *             tcp alone would keep it "open" for hours
  *
  *      close codes used: 1000 normal, 1001 going away (shutdown),
- *      1002 protocol error, 1003 unsupported data
+ *      1002 protocol error, 1003 unsupported data, 1009 too big
  *
  *      wiring is manual - garage's core never touches this: after
  *      `app.listen()`, hand upgrade requests to `handleUpgrade` yourself:
@@ -254,7 +275,7 @@ function readFrame(bf) {
  * @param  {WssOptions<Meta>} [opt]
  * @return {Wss<Meta>}
  */
-export default function createWss({ ping = 30_000, authenticate = () => void 0 } = {}) {
+export default function createWss({ ping = 30_000, maxPayload = 1 << 20, authenticate = () => void 0 } = {}) {
 
     const connections = new Map // socket → { meta, alive, closed }
     const tid = setInterval(heartbeat, ping)
@@ -281,6 +302,14 @@ export default function createWss({ ping = 30_000, authenticate = () => void 0 }
      * @param {Duplex} soc
      */
     async function handleUpgrade(rq, soc) {
+        // node strips its own error listener on upgrade: without ours,
+        // a reset during authenticate() crashes the process
+        soc.on('error', () => drop(soc))
+
+        const key = rq.headers[ 'sec-websocket-key' ]
+        if (rq.headers.upgrade?.toLowerCase() !== 'websocket' || !key)
+            return reject(soc, '400 Bad Request')
+
         let meta
         try {
             meta = await authenticate(rq)
@@ -289,9 +318,8 @@ export default function createWss({ ping = 30_000, authenticate = () => void 0 }
             return reject(soc, '401 Unauthorized')
         }
 
-        const key = rq.headers[ 'sec-websocket-key' ]
-        if (rq.headers.upgrade?.toLowerCase() !== 'websocket' || !key)
-            return reject(soc, '400 Bad Request')
+        if (soc.destroyed)
+            return
 
         soc.write([
             'HTTP/1.1 101 Switching Protocols',
@@ -315,10 +343,9 @@ export default function createWss({ ping = 30_000, authenticate = () => void 0 }
                 case OP.text : return                        // push-only, inbound text ignored
                 default      : return close(soc, 1003)
             }
-        })
+        }, { maxPayload, onOversize: () => close(soc, 1009) })
 
         soc.on('data', chunk => parser.push(chunk))
-        soc.on('error', () => drop(soc))
         soc.on('close', () => connections.delete(soc))
 
         // a client that vanishes without a close frame (network drop, tab
@@ -376,10 +403,11 @@ export default function createWss({ ping = 30_000, authenticate = () => void 0 }
     return {
         handleUpgrade,
 
-        // guarded raw write of an already-encoded frame - never
+        // guarded raw write of an already-encoded frame, live sockets only - never
         // double-encodes, callers build frames via encodeFrame themselves
         send(soc, frame) {
-            connections.get(soc)?.closed || soc.write(frame)
+            const con = connections.get(soc)
+            con && !con.closed && soc.write(frame)
         },
 
         // iterate live connections with their authenticate() metadata -
@@ -420,6 +448,7 @@ export default function createWss({ ping = 30_000, authenticate = () => void 0 }
  * @typedef { Object } WssOptions
  * @prop {(rq: IncomingMessage) => Meta | Promise<Meta> } [authenticate] - per connection metadata, or throw/reject for a plain 401 before the 101
  * @prop { number } [ping] - keepalive interval in ms, default 30000
+ * @prop { number } [maxPayload] - max inbound frame payload in bytes, default 1mb
  */
 
 /**

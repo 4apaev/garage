@@ -35,12 +35,12 @@ export class A extends Array {
     where(query, ctx, sym) { return A.where(this, query, ctx, sym) }
     rm(query, ctx, sym)    { return A.rm(this, query, ctx, sym) }
 
-    static of()               { return Reflect.construct(this, arguments) }
     static uniq(a)            { return A.from(new Set(a)) }
     static fill(n, fx = echo) { return A.from({ length: n }, (_, i) => fx(i)) }
     static prop(k)            { return x => x[ k ] }
 
     static pre(query, any) {
+        if (query == null)        return x => x === query
         if (Is.f(query))          return query
         if (Is.f(query.has))      return x => query.has(x)       // Map | Set
         if (Is.f(query.includes)) return x => query.includes(x)  // Array | String
@@ -83,7 +83,7 @@ export class A extends Array {
 export function random(a, b) {
     return a == null
         ? +random
-        : 0 | (b == null
+        : Math.floor(b == null
             ? random * a
             : random * (b - a) + a)
 }
@@ -129,14 +129,15 @@ export class Fail extends Error {
     constructor() {
         let [ code, mssg, cause, start ] = new.target.parse(arguments)
 
-        super(mssg, cause?.cause ? cause : { cause })
+        // a plain { cause } bag is options, an error with .cause is the cause itself
+        super(mssg, Is.o(cause) && !Is(Error, cause) && 'cause' in cause ? cause : { cause })
 
         this.code = code
         new.target.captureStackTrace(this, start ?? new.target)
     }
 
     static is(x)         { return this[ Symbol.hasInstance ](x) }
-    static from(e, code) { return this.of(code ?? e.code ?? e.status ?? 500, e.message, e, this.from) }
+    static from(e, code) { return this.of(code ?? [ e?.code, e?.status ].find(Is.N) ?? 500, String(e?.message ?? e), e, this.from) }
     static raise(...a)   { throw  this.of(...a.concat(this.raise)) }
     static deny(...a)    { return Promise.reject(this.of(...a.concat(this.deny))) }
     static ok(x, ...a)   { return Boolean(x) || this.raise(...a.concat(this.ok)) }

@@ -81,3 +81,14 @@ describe('compose', () => {
         deepEqual(calls, [ 'a', 'b', 'next' ])
     })
 })
+
+describe('compose prod', () => {
+    it('takes the same arguments as dev', async () => {
+        const calls = []
+        const a = (rq, rs, next) => (calls.push('a'), next())
+        const b = (rq, rs, next) => (calls.push('b'), next())
+
+        await composeProd(a, [ b ])({}, {}, async () => calls.push('next'))
+        deepEqual(calls, [ 'a', 'b', 'next' ])
+    })
+})

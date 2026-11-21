@@ -2,10 +2,11 @@
 import { Fail } from './util.js'
 
 /**
- * @param  { MWare[] } mware
+ * @param  { ...(MWare | MWare[]) } middleware
  * @return { MWare }
  */
-export function composeProd(mware) {
+export function composeProd(...middleware) {
+    const mware = middleware.flat()
     /**
      * @param { Req } rq
      * @param { Res } rs

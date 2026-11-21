@@ -51,7 +51,7 @@ declare module 'garage' {
 
         get URL(): URL
         get path(): string
-        get query(): Record<string, string>
+        get query(): Record<string, string | string[]>
         get type(): string
         get size(): number
 
@@ -79,7 +79,7 @@ declare module 'garage' {
         append(k: string | Record<string, string | number | readonly string[]>, v?: string | number | readonly string[]): this
         json(code: number, data: unknown): this
         send(code: number, data?: unknown): this
-        file(path: string): Promise<this>
+        file(path: string | URL): Promise<this>
         resolve(data?: unknown | Buffer | Readable): this
     }
 
@@ -105,7 +105,7 @@ declare module 'garage/garage' {
 declare module 'garage/compose' {
     import type { MWare } from 'garage'
 
-    export function composeProd(mware: MWare[]): MWare
+    export function composeProd(...middleware: Array<MWare | MWare[]>): MWare
     export function composeDev(...middleware: Array<MWare | MWare[]>): MWare
 
     export default composeDev
@@ -223,18 +223,27 @@ declare module 'garage/mw/ws' {
         push(chunk: Buffer): void
     }
 
-    export function createFrameParser(onFrame: (frame: Frame) => unknown): FrameParser
+    export interface FrameParserOptions {
+        /** max declared payload in bytes - default Infinity */
+        maxPayload?: number
+        /** called once a frame claims more than maxPayload; the buffer is dropped */
+        onOversize?(): unknown
+    }
+
+    export function createFrameParser(onFrame: (frame: Frame) => unknown, opt?: FrameParserOptions): FrameParser
 
     export interface WssOptions<Meta = unknown> {
         /** returns per-connection metadata, or throws/rejects to send a plain 401 before the 101 */
         authenticate?(rq: IncomingMessage): Meta | Promise<Meta>
         /** keepalive interval in ms - default 30000 */
         ping?: number
+        /** max inbound frame payload in bytes, bigger closes with 1009 - default 1mb */
+        maxPayload?: number
     }
 
     export interface Wss<Meta = unknown> {
         /** wire to `server.on('upgrade')` - answers 101 or a plain http refusal */
-        handleUpgrade(rq: IncomingMessage, socket: Duplex): void
+        handleUpgrade(rq: IncomingMessage, socket: Duplex): Promise<void>
         /** guarded raw write of an already-encoded frame (see encodeFrame) */
         send(socket: Duplex, frame: Buffer): void
         /** iterate live connections with their authenticate() metadata */
@@ -489,7 +498,7 @@ declare module 'garage/util' {
     }
 
     export class O extends Object {
-        static readonly o: Record<PropertyKey, never>
+        static readonly o: Record<PropertyKey, any>
 
         static define: typeof Object.defineProperty
         static defines: typeof Object.defineProperties

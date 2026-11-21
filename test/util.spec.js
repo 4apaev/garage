@@ -262,3 +262,36 @@ describe('util', () => {
     })
 
 })
+
+describe('util fixes', () => {
+    it('Fail keeps an error with its own cause as the direct cause', () => {
+        const inner = new Error('inner', { cause: 'root' })
+
+        assrt.equal(Fail.of(500, 'outer', inner).cause, inner)
+        assrt.equal(Fail.of(500, 'outer', { cause: 'opts' }).cause, 'opts')
+    })
+
+    it('Fail.from takes only integer codes and keeps the message', () => {
+        const fs = Object.assign(new Error('no such file'), { code: 'ENOENT' })
+        const db = Object.assign(new Error('busy'), { status: 503 })
+
+        assrt.equal(Fail.from(fs).code, 500)
+        assrt.equal(Fail.from(fs).message, 'no such file')
+        assrt.equal(Fail.from(db).code, 503)
+        assrt.equal(Fail.from('boom').message, 'boom')
+    })
+
+    it('A.of matches Array.of', () => {
+        assrt.deepEqual(Array.from(A.of(3)), [ 3 ])
+        assrt.equal(A.of(3) instanceof A, true)
+    })
+
+    it('A.where accepts a null query', () => {
+        assrt.deepEqual(Array.from(A.where([ null, 1, null ], null)), [ null, null ])
+    })
+
+    it('random covers the whole negative range', t => {
+        t.mock.method(random, 'valueOf', () => 0.01)
+        assrt.equal(random(-5, -1), -5)
+    })
+})

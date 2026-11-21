@@ -449,3 +449,73 @@ describe('garage', () => {
         }
     })
 })
+
+describe('garage fixes', () => {
+    it('maps non-http error codes to 500 instead of crashing', async () => {
+        const app = new Garage
+        app.get('/db', () => { throw Object.assign(new Error('db'), { code: 19 }) })
+        app.get('/abort', () => { throw new DOMException('gone', 'AbortError') })
+
+        const url = await start(app)
+        try {
+            equal((await fetch(url + '/db')).status, 500)
+            equal((await fetch(url + '/abort')).status, 500)
+        }
+        finally {
+            await stop(app)
+        }
+    })
+
+    it('accepts a full content-type on the response', async () => {
+        const app = new Garage
+        app.get('/html', (rq, rs) => {
+            rs.type = 'text/html; charset=utf-8'
+            return rs.send(200, '<p>hi</p>')
+        })
+
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/html')
+            equal(res.status, 200)
+            equal(res.headers.get('content-type'), 'text/html; charset=utf-8')
+        }
+        finally {
+            await stop(app)
+        }
+    })
+
+    it('answers 404 for a directory instead of hanging', async () => {
+        const app = new Garage
+        const dir = await Fs.mkdtemp(Path.join(Os.tmpdir(), 'garage-'))
+        app.get('/dir', (rq, rs) => rs.file(dir))
+
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/dir', { signal: AbortSignal.timeout(2000) })
+            equal(res.status, 404)
+        }
+        finally {
+            await Fs.rm(dir, { force: true, recursive: true })
+            await stop(app)
+        }
+    })
+
+    it('sends no content-length with 204', async () => {
+        const app = new Garage
+        app.get('/empty', (rq, rs) => rs.send(204, 'ignored'))
+        app.get('/none', (rq, rs) => rs.send(200))
+
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/empty')
+            equal(res.status, 204)
+            equal(res.headers.get('content-length'), null)
+
+            const none = await fetch(url + '/none')
+            equal(none.headers.get('content-length'), '0')
+        }
+        finally {
+            await stop(app)
+        }
+    })
+})
