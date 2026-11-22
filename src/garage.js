@@ -59,7 +59,7 @@ export default class Garage extends EventEmitter {
             return r
         }
         catch (e) {
-            return this.onerror(Fail.from(e), rq, rs, this)
+            return this.onerror(Fail.is(e) ? e : Fail.from(e), rq, rs, this)
         }
     }
 

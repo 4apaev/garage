@@ -263,12 +263,14 @@ describe('garage', () => {
         }
     })
 
-    it('records malformed json as a fail without throwing out of the reader', async () => {
+    it('answers 400 on malformed json', async () => {
         const app = new Garage
+        let cause
 
+        app.on('error', e => cause = e.cause)
         app.post('/echo', async (rq, rs) => {
             await rq.reader()
-            rs.json(200, { errorCode: rq.error?.code, body: rq.body })
+            rs.json(200, rq.body)
         })
 
         const url = await start(app)
@@ -278,10 +280,9 @@ describe('garage', () => {
                 headers: { 'content-type': 'application/json' },
                 body   : '{',
             })
-            const json = await res.json()
-
-            equal(json.errorCode, 400)
-            equal(json.body, void 0)
+            equal(res.status, 400)
+            equal(await res.text(), 'invalid json')
+            ok(cause instanceof SyntaxError)
         }
         finally {
             await stop(app)
@@ -565,6 +566,58 @@ describe('garage 404', () => {
             const res = await fetch(url + '/nope')
             equal(res.status, 404)
             deepEqual(await res.json(), { error: 'not found' })
+        }
+        finally {
+            await stop(app)
+        }
+    })
+})
+
+describe('req reader limit', () => {
+    async function post(url, body, headers) {
+        const res = await fetch(url, { method: 'POST', body, headers })
+        return [ res.status, await res.text() ]
+    }
+
+    it('answers 413 above the limit, by content-length or by counted bytes', async () => {
+        const app = new Garage
+        app.post('/small', async (rq, rs) => (await rq.reader(8), rs.send(200, rq.body)))
+        app.post('/default', async (rq, rs) => (await rq.reader(), rs.send(200, 'ok')))
+
+        const url = await start(app)
+        try {
+            deepEqual(await post(url + '/small', 'tiny', { 'content-type': 'text/plain' }), [ 200, 'tiny' ])
+            deepEqual(await post(url + '/small', 'x'.repeat(9)), [ 413, 'payload too large' ])
+
+            // no content-length: the bytes are counted while reading
+            const chunked = new ReadableStream({
+                start(c) {
+                    c.enqueue(new Uint8Array(16))
+                    c.close()
+                },
+            })
+
+            const res = await fetch(url + '/small', { method: 'POST', body: chunked, duplex: 'half' })
+            equal(res.status, 413)
+
+            equal((await post(url + '/default', Buffer.alloc((1 << 20) + 1)))[ 0 ], 413)
+        }
+        finally {
+            await stop(app)
+        }
+    })
+
+    it('takes the default from Req.limit', async t => {
+        t.after(() => { Req.limit = 1 << 20 })
+        Req.limit = 4
+
+        const app = new Garage
+        app.post('/x', async (rq, rs) => (await rq.reader(), rs.send(200, 'ok')))
+
+        const url = await start(app)
+        try {
+            deepEqual(await post(url + '/x', 'abcd'), [ 200, 'ok' ])
+            deepEqual(await post(url + '/x', 'abcde'), [ 413, 'payload too large' ])
         }
         finally {
             await stop(app)

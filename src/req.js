@@ -8,6 +8,8 @@ const µrl = Symbol('µrl') // cache
 const µqs = Symbol('µqs') // cache
 
 export default class Req extends Http.IncomingMessage {
+    static limit = 1 << 20 // max body bytes for reader(), Infinity turns it off
+
     params = O.o
 
     get URL()   { return this[ µrl ] ??= new URL(this.url, 'file:') }
@@ -15,15 +17,21 @@ export default class Req extends Http.IncomingMessage {
     get path()  { return this.URL.pathname }
 
     get type() { return this.get('content-type') ?? '' }
-    get size() { return this.get('content-length') | 0 }
+    get size() { return +this.get('content-length') || 0 }
 
     has(k) { return k.toLowerCase() in this.headers }
     get(k) { return this.headers[ k.toLowerCase() ] ?? '' }
 
-    async reader() {
-        let body = []
-        for await (const chunk of this)
+    async reader(limit = this.constructor.limit) {
+        this.size > limit && Fail.raise(413, 'payload too large', this.size, this.reader)
+
+        let body = [], n = 0
+        for await (const chunk of this) {
+            // content-length can lie, or be missing with chunked encoding
+            n += chunk.length
+            n > limit && Fail.raise(413, 'payload too large', n, this.reader)
             body.push(Buffer.from(chunk))
+        }
 
         body = Buffer.concat(body)
 
@@ -34,7 +42,7 @@ export default class Req extends Http.IncomingMessage {
                     : void 0
             }
             catch (e) {
-                this.error = new Fail(400, e.message, e, this.reader)
+                Fail.raise(400, 'invalid json', e, this.reader)
             }
         }
         else if (Mim.is('txt', this.type)) {

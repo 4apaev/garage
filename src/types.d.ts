@@ -45,8 +45,9 @@ declare module 'garage' {
     export default Garage
 
     export class Req extends IncomingMessage {
+        static limit: number // max body bytes for reader() - default 1mb, Infinity turns it off
+
         body?: unknown
-        error?: Error
         params: Record<string, string>
 
         get URL(): URL
@@ -57,7 +58,7 @@ declare module 'garage' {
 
         has(k: string): boolean
         get(k: string): string
-        reader(): Promise<void>
+        reader(limit?: number): Promise<void> // throws 413 above limit, 400 on bad json
     }
 
     export class Res extends ServerResponse {
