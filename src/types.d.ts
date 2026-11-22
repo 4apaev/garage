@@ -51,7 +51,7 @@ declare module 'garage' {
 
         get URL(): URL
         get path(): string
-        get query(): Record<string, string>
+        get query(): Record<string, string | string[]>
         get type(): string
         get size(): number
 
@@ -79,7 +79,7 @@ declare module 'garage' {
         append(k: string | Record<string, string | number | readonly string[]>, v?: string | number | readonly string[]): this
         json(code: number, data: unknown): this
         send(code: number, data?: unknown): this
-        file(path: string): Promise<this>
+        file(path: string | URL): Promise<this>
         resolve(data?: unknown | Buffer | Readable): this
     }
 
@@ -105,10 +105,7 @@ declare module 'garage/garage' {
 declare module 'garage/compose' {
     import type { MWare } from 'garage'
 
-    export function composeProd(mware: MWare[]): MWare
-    export function composeDev(...middleware: Array<MWare | MWare[]>): MWare
-
-    export default composeDev
+    export default function compose(...middleware: Array<MWare | MWare[]>): MWare
 }
 
 declare module 'garage/use' {
@@ -179,69 +176,89 @@ declare module 'garage/mime' {
 }
 
 declare module 'garage/mw/ws' {
-    import type { IncomingMessage } from 'node:http'
-    import type { Duplex } from 'node:stream'
+    import type { IncomingMessage as Req } from 'node:http'
+    import type { Duplex as Soc } from 'node:stream'
 
-    /** the fixed rfc 6455 handshake guid, identical on every websocket server */
+    /*
+        the fixed rfc 6455 handshake guid,
+        identical on every websocket server
+    */
     export const MAGIC: '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
-    /** frame opcodes: 0x0-0x7 data, 0x8-0xf control */
-    export const OP: {
-        cont : 0x0
-        text : 0x1
-        bin  : 0x2
-        close: 0x8
-        ping : 0x9
-        pong : 0xA
-    }
+    /*
+        frame opcodes: 0x0-0x7 data, 0x8-0xf control
+    */
+    export const OP: {/*
+    ┌────────────┬──────────────┬──────────────────────────────────────────────────────────────┐
+    │ */ cont /* │ */ : 0x0, /* │ continuation of a fragmented message - never fragmented here │
+    │ */ text /* │ */ : 0x1, /* │ utf8 payload    - everything sent through send()             │
+    │ */ bin  /* │ */ : 0x2, /* │ binary payload  - unused here                                │
+    │ */ close/* │ */ : 0x8, /* │ close handshake - 2 byte status code + optional reason       │
+    │ */ ping /* │ */ : 0x9, /* │ keepalive probe - receiver must answer with a pong           │
+    │ */ pong /* │ */ : 0xA, /* │ the answer, payload echoed back ┌────────────────────────────┘
+    └────────────┴──────────────┴─────────────────────────────────┘
+    */}
 
-    /** base64(sha1(key + MAGIC)) - the Sec-WebSocket-Accept value for a client key */
+
+    /*
+        base64(sha1(key + MAGIC))
+        the Sec-WebSocket-Accept value for a client key
+    */
     export function acceptKey(key: string): string
 
     export interface FrameOptions {
-        /** one of OP.* - default OP.text */
-        opcode?: number
-        /** true = act as a client: set the MASK bit, XOR the payload */
-        mask?: boolean
+        opcode?: number // one of OP.* - default OP.text
+        mask?: boolean // true = act as a client: set the MASK bit, XOR the payload
     }
 
-    /** one complete wire frame, FIN always set (no fragmentation) */
+    // one complete wire frame, FIN always set (no fragmentation)
     export function encodeFrame(payload: Buffer | string, opt?: FrameOptions): Buffer
 
-    /** a parsed frame - payload already unmasked */
+    // a parsed frame - payload already unmasked
     export interface Frame {
-        fin: boolean
-        opcode: number
-        masked: boolean
+        fin    : boolean
+        size   : number // total bytes this frame took on the wire - header + key + payload
+        opcode : number
+        masked : boolean
         payload: Buffer
-        /** total bytes this frame took on the wire - header + key + payload */
-        size: number
     }
+
+    export interface Connection<Meta = unknown> {
+        meta: Meta
+        alive: boolean
+        closed: boolean
+    }
+
+    export type Connections<Meta = unknown> = Map<Soc, Connection<Meta>>
 
     export interface FrameParser {
         /** feed a tcp chunk; onFrame fires once per completed frame */
         push(chunk: Buffer): void
     }
 
-    export function createFrameParser(onFrame: (frame: Frame) => unknown): FrameParser
+    export interface FrameParserOptions {
+        maxPayload?: number // max declared payload in bytes - default Infinity
+        onOversize?(): unknown // called once a frame claims more than maxPayload; the buffer is dropped
+    }
 
-    export interface WssOptions<Meta = unknown> {
-        /** returns per-connection metadata, or throws/rejects to send a plain 401 before the 101 */
-        authenticate?(rq: IncomingMessage): Meta | Promise<Meta>
-        /** keepalive interval in ms - default 30000 */
-        ping?: number
+    export function createFrameParser(onFrame: (frame: Frame) => unknown, opt?: FrameParserOptions): FrameParser
+
+    export interface WssOptions<Meta = unknown> { /*
+
+        returns per-connection metadata,
+        or throws/rejects to send
+        a plain 401 before the 101 */
+        authenticate?(rq: Req): Meta | Promise<Meta>
+        ping?: number // keepalive interval in ms - default 30000
+        maxPayload?: number // max inbound frame payload in bytes, bigger closes with 1009 - default 1mb
     }
 
     export interface Wss<Meta = unknown> {
-        /** wire to `server.on('upgrade')` - answers 101 or a plain http refusal */
-        handleUpgrade(rq: IncomingMessage, socket: Duplex): void
-        /** guarded raw write of an already-encoded frame (see encodeFrame) */
-        send(socket: Duplex, frame: Buffer): void
-        /** iterate live connections with their authenticate() metadata */
-        each(fn: (meta: Meta, socket: Duplex) => void): void
+        handleUpgrade(rq: Req, soc: Soc): Promise<void> // wire to `server.on('upgrade')` - answers 101 or a plain http refusal
+        send(soc: Soc, frame: Buffer): void // guarded raw write of an already-encoded frame, live sockets only
+        each(fn: (meta: Meta, soc: Soc) => void): void // iterate live connections with their authenticate() metadata
         stats(): { sockets: number }
-        /** close-frame every socket (1001), stop the heartbeat */
-        close(): void
+        close(): void // close-frame every socket (1001), stop the heartbeat
     }
 
     export default function createWss<Meta = unknown>(opt?: WssOptions<Meta>): Wss<Meta>
@@ -420,6 +437,7 @@ declare module 'garage/util' {
         export function S(x: unknown): x is symbol
         export function f(x: unknown): x is Function
         export function o(x: unknown): x is object
+        export function O(x: unknown): boolean
         export function i(x: unknown): x is Iterable<unknown>
         export function I<T>(y: Ctor<T>, x: unknown): x is T
         export function F<T>(y: Ctor<T>, x: unknown): x is T
@@ -489,7 +507,7 @@ declare module 'garage/util' {
     }
 
     export class O extends Object {
-        static readonly o: Record<PropertyKey, never>
+        static readonly o: Record<PropertyKey, any>
 
         static define: typeof Object.defineProperty
         static defines: typeof Object.defineProperties
@@ -513,6 +531,15 @@ declare module 'garage/util' {
             ...trg: object[]
         ): T | object
     }
+
+    export function raw(s: { raw: readonly string[] }, a?: any[], fn?: (x: any) => string): string
+    export function raw(s: string, a?: any[], fn?: (x: any) => string): string
+
+    export function Rx(s: { raw: readonly string[] }, ...a: any[]): RegExp
+    export function Rx(s: string, ...a: any[]): RegExp
+
+    export type TRx = typeof Rx
+    export type TRw = typeof raw
 }
 
 declare module 'garage/constants' {

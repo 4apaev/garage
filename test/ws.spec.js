@@ -1,4 +1,5 @@
 import Http from 'node:http'
+import { Duplex } from 'node:stream'
 import { setTimeout } from 'node:timers/promises'
 
 import { describe, it, before, after } from 'node:test'
@@ -179,6 +180,88 @@ describe('ws', () => {
         }
     })
 })
+
+describe('ws limits', () => {
+    const key = 'dGhlIHNhbXBsZSBub25jZQ=='
+    const rq  = { headers: { upgrade: 'websocket', 'sec-websocket-key': key }}
+
+    it('frame parser refuses a frame bigger than maxPayload', () => {
+        let over = 0
+        const frames = []
+        const parser = createFrameParser(f => frames.push(f), { maxPayload: 4, onOversize: () => over++ })
+
+        parser.push(encodeFrame('ok'))
+        parser.push(encodeFrame('too long'))
+
+        equal(frames.length, 1)
+        equal(over, 1)
+    })
+
+    it('survives a socket error while authenticate() is pending', async () => {
+        let done
+        const wss = createWss({ authenticate: () => new Promise(ok => done = ok) })
+        const soc = fakeSocket()
+
+        const pending = wss.handleUpgrade(rq, soc)
+        soc.emit('error', new Error('ECONNRESET'))   // throws if nobody listens
+        done({})
+        await pending
+
+        equal(wss.stats().sockets, 0)
+        wss.close()
+    })
+
+    it('closes with 1009 when a frame is too big', () => {
+        const wss = createWss({ maxPayload: 8 })
+        const soc = fakeSocket()
+        wss.handleUpgrade(rq, soc)
+
+        return new Promise(ok => setImmediate(() => {
+            soc.push(encodeFrame('x'.repeat(64), { mask: true }))
+            setImmediate(() => {
+                const close = soc.written.slice(1).map(createFrame).find(f => f?.opcode === OP.close)
+                equal(close.payload.readUInt16BE(0), 1009)
+                equal(soc.destroyed, true)
+                wss.close()
+                ok()
+            })
+        }))
+    })
+
+    it('send() writes to open sockets only', () => {
+        const wss = createWss()
+        const soc = fakeSocket()
+        wss.handleUpgrade(rq, soc)
+
+        return new Promise(ok => setImmediate(() => {
+            const n = soc.written.length
+            wss.send(soc, encodeFrame('hi'))
+            equal(soc.written.length, n + 1)
+
+            wss.close()
+            const m = soc.written.length
+            wss.send(soc, encodeFrame('late'))
+            wss.send(fakeSocket(), encodeFrame('stranger'))
+            equal(soc.written.length, m)
+            ok()
+        }))
+    })
+})
+
+function fakeSocket() {
+    const soc = new Duplex({
+        read() {},
+        write(chunk, enc, cb) { soc.written.push(Buffer.from(chunk)); cb() },
+    })
+    soc.written = []
+    return soc
+}
+
+function createFrame(buf) {
+    let frame
+    createFrameParser(f => frame ??= f).push(buf)
+    return frame
+}
 
 // wires a fresh wss onto a real garage app's 'upgrade' event - the exact
 // manual-wiring pattern documented for consumers, exercised against a real

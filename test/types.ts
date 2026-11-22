@@ -35,3 +35,23 @@ const mime = fromPath('/tmp/file.json')
 const fail: Fail = Fail.of(404)
 const isFail: boolean = Fail.is(fail)
 const isString: boolean = Is.s('x')
+
+import createWss, { createFrameParser, encodeFrame, OP, type Wss } from 'garage/mw/ws'
+import { is } from 'garage/mime'
+import { A, O } from 'garage/util'
+
+const wss: Wss<{ id: string }> = createWss({ maxPayload: 1024, authenticate: () => ({ id: 'x' }) })
+const upgraded: Promise<void> = wss.handleUpgrade(null as never, null as never)
+wss.each((meta, soc) => meta.id && wss.send(soc, encodeFrame('hi', { opcode: OP.text })))
+createFrameParser(f => f.payload, { maxPayload: 8, onOversize: () => {} })
+
+const route: MWare = async (rq, rs) => {
+    const tags: string | string[] = rq.query.tag
+    await rs.file(new URL('file:///tmp/x.txt'))
+    return rs.json(200, { tags, json: is('json', rq.type) })
+}
+
+const bag = O.o
+bag.anything = 1
+const nums: A<number> = A.of(1, 2, 3)
+const prodComposed: MWare = composeSubpath(mw, [ route ])

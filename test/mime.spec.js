@@ -49,3 +49,14 @@ describe('mime', () => {
         equal(is('json'), false)
     })
 })
+
+describe('mime is', () => {
+    it('does not match a prefix of the expected type', () => {
+        equal(is('json', 'application'), false)
+        equal(is('txt', 'text/'), false)
+    })
+
+    it('ignores case and spaces in the header', () => {
+        equal(is('json', ' Application/JSON ; charset=utf-8'), true)
+    })
+})

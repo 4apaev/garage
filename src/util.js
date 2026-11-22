@@ -35,12 +35,12 @@ export class A extends Array {
     where(query, ctx, sym) { return A.where(this, query, ctx, sym) }
     rm(query, ctx, sym)    { return A.rm(this, query, ctx, sym) }
 
-    static of()               { return Reflect.construct(this, arguments) }
     static uniq(a)            { return A.from(new Set(a)) }
     static fill(n, fx = echo) { return A.from({ length: n }, (_, i) => fx(i)) }
     static prop(k)            { return x => x[ k ] }
 
     static pre(query, any) {
+        if (query == null)        return x => x === query
         if (Is.f(query))          return query
         if (Is.f(query.has))      return x => query.has(x)       // Map | Set
         if (Is.f(query.includes)) return x => query.includes(x)  // Array | String
@@ -83,7 +83,7 @@ export class A extends Array {
 export function random(a, b) {
     return a == null
         ? +random
-        : 0 | (b == null
+        : Math.floor(b == null
             ? random * a
             : random * (b - a) + a)
 }
@@ -110,6 +110,7 @@ export function Is(...a) {
     Is.S = x => typeof x == 'symbol'
     Is.f = x => typeof x == 'function'
     Is.o = x => typeof x == 'object' && !!x
+    Is.O = x => Is.t(x) === 'Object'
     Is.i = x => Symbol.iterator in Object(x)
     Is.I = (y, x) => y[ Symbol.hasInstance ](x)
     Is.F = (y, x) => y === x?.constructor
@@ -128,20 +129,37 @@ export class Fail extends Error {
 
     constructor() {
         let [ code, mssg, cause, start ] = new.target.parse(arguments)
-
-        super(mssg, cause?.cause ? cause : { cause })
+        super(mssg, { cause })
 
         this.code = code
         new.target.captureStackTrace(this, start ?? new.target)
     }
 
     static is(x)         { return this[ Symbol.hasInstance ](x) }
-    static from(e, code) { return this.of(code ?? e.code ?? e.status ?? 500, e.message, e, this.from) }
-    static raise(...a)   { throw  this.of(...a.concat(this.raise)) }
-    static deny(...a)    { return Promise.reject(this.of(...a.concat(this.deny))) }
-    static ok(x, ...a)   { return Boolean(x) || this.raise(...a.concat(this.ok)) }
-    static no(x, ...a)   { return Boolean(x) && this.raise(...a.concat(this.no)) }
+    static from(e, code) { return this.of(code ?? [ e?.code, e?.status ].find(Is.N) ?? 500, String(e?.message ?? e), e, this.from) }
+    static raise(...a)   { throw  this.of(...a, this.raise) }
+    static deny(...a)    { return Promise.reject(this.of(...a, this.deny)) }
+    static ok(x, ...a)   { return Boolean(x) || this.raise(...a, this.ok) }
+    static no(x, ...a)   { return Boolean(x) && this.raise(...a, this.no) }
     static of(...a)      { return Reflect.construct(this, a.concat(this.of)) }
+    static maybe(fn, ctx) {
+        let e, r
+        async function may() {
+            e = r = void 0
+            try {
+                r = await fn.apply(ctx ?? this, arguments)
+                return 1
+            }
+            catch (cause) { // eslint-disable-next-line no-constant-binary-expression
+                e = new Fail('[maybe:fail] ' + cause?.message ?? '', cause, may)
+                return 0
+            }
+        }
+        return O.use(may, {
+            get e() { return e }, get error() { return e },
+            get r() { return r }, get result() { return r },
+        })
+    }
 
     static parse(argv) {
         let code, mssg, cause, start
@@ -180,6 +198,11 @@ export class O extends Object {
         this.tuple = x => Is.f(x?.entries) ? x.entries() : this.entries(x)
         this.of    = x => this.ƒ(this.from(x))
         this.ƒ     = (...a) => a.reduce((x, y) => this.use(x, y), this.o)
+
+        this.pro = (...a) => this[ `${ a.length > 1 ? 's' : 'g' }etPrototypeOf` ](...a)
+        this.pro.get = this.getPrototypeOf
+        this.pro.set = this.setPrototypeOf
+        this.pro.nil = x => this.pro.set(x, null)
 
         const CEW = [ 'configurable', 'enumerable', 'writable' ]
         this.use = (...argv) => {
@@ -230,39 +253,47 @@ export class O extends Object {
 
 //──────────────────────────────────────────────────────────────────────────────
 
-// export function each(x, fx, ctx) {
-//     let i = 0, brk = Symbol.for('break')
-//     for (const [ k, v ] of O.tuple(x)) {
-//         if (brk === fx.call(ctx, k, v, i++, brk))
-//             break
-//     }
-//     return ctx
-// }
-// each.kv = each
-// each.vk = (x, fx, ctx) => {
-//     let i = 0, brk = Symbol.for('break')
-//     for (const [ k, v ] of O.tuple(x)) {
-//         if (brk === fx.call(ctx, v, k, i++, brk))
-//             break
-//     }
-//     return ctx
-// }
+export function nil(x, any) {
+    return Is.x(x)
+        ? each(x, (_, v) => nil(v, any), Is.O(x) || any  ? O.pro.set(x, null) : x)
+        : x
+}
 
-// export function raw(s, a) {
-//     return (a => s?.raw
-//         ? String.raw(s, ...a)
-//         : ''.concat(s, ...a))(concat(a ?? []).map(String))
-// }
+export function dig(ctx, path, flbck) {
+    return path.split('.').every(k => Is(ctx = ctx?.[ k ]))
+        ? ctx
+        : flbck
+}
 
-// export function Rx(s, ...a) {
-//     let flag = ''
-//     let pttr = s?.raw
-//         ?       raw(s, ...a.map(Rx.frmt))
-//         : pttr.concat(s, ...a.map(Rx.frmt))
+/** @type { TRw } */
+export function raw(s, a, fn) {
+    return (a => Is.s(s)
+        ? s.concat(s, ...a)
+        : String.raw(s, ...a))(concat(a ?? []).map(fn ?? String))
+}
 
-//     return new Rx(pttr
-//         .replace(/ +# +.*/g, '')
-//         .replace(/ *\n+ *(?![+*])/g, '')
-//         .replace(/ *\/ *([idgmsyuv]+) *\/?$/, (_, f) => (flag += f, '')), flag)
-// }
-// Rx.frmt = x => concat(x).map(x => Is(RegExp, x) ? x.source : String(x)).join('')
+/** @type { TRx } */
+export function Rx(s, ...a)  {
+    let flags = ''
+    return new RegExp(
+        raw(s, a, Rx.frmt)
+            .replace(/ +##+ +.*/g, '')          // comments starts with (space + ## + space)
+            .replace(/ *\n+ *(?![+*])/g, '')    // new line
+            .trim()
+            .replace(/ /g, String.raw`\s`)      // space token to literal
+            .replace(/ *\/([idgmsyuv]+) *$/,    // flags
+                (_, fl) => (flags += fl, '')),
+        flags,
+    )
+}
+
+Rx.frmt = x => Is.a(x)
+    ? x.map(Rx.frmt).join('')
+    : Is(RegExp, x) ? x.source : String(x)
+
+//──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @typedef { import('garage/util').TRw } TRw
+ * @typedef { import('garage/util').TRx } TRx
+ */

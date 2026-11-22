@@ -2,6 +2,7 @@ import Fs   from 'node:fs/promises'
 import Http from 'node:http'
 
 import { Readable       } from 'node:stream'
+import { pipeline       } from 'node:stream/promises'
 import { Is, Fail, each } from './util.js'
 import * as Mim           from './mime.js'
 
@@ -15,7 +16,7 @@ export default class Res extends Http.ServerResponse {
     set size(x)  {        this.set('content-length', x) }
 
     get type()   { return this.get('content-type') }
-    set type(x)  {        this.set('content-type', Mim.get(x)) }
+    set type(x)  {        this.set('content-type', Mim.get(x, x)) }
 
     has(k)       { return this.hasHeader(k)       }
     get(k)       { return this.getHeader(k) ?? '' }
@@ -39,23 +40,24 @@ export default class Res extends Http.ServerResponse {
         try {
             fd = await Fs.open(path)
             const stat = await fd.stat()
+            stat.isFile() || Fail.raise(404, 'not a file', path)
 
             this.status = 200
             this.size = stat.size
             this.type = Mim.fromPath(path, Mim.MIME.bin)
             this.body = fd.createReadStream({ autoClose: false })
-                .pipe(this)
 
-            await new Promise((ok , no) =>
-                this.once('error' , no)
-                    .once('finish', ok)
-                    .once('close' , ok))
-
+            await pipeline(this.body, this)
             return this
         }
         catch (e) {
-            this.status = 404
             this.error = new Fail(404, e.message, e, this.file)
+
+            // too late for a 404, the status line is gone
+            if (this.headersSent)
+                return this.destroy()
+
+            this.status = 404
             return this.end()
         }
         finally {
@@ -64,7 +66,11 @@ export default class Res extends Http.ServerResponse {
     }
 
     resolve(data = this.body) {
-        if (data == null || this.status === 204) {
+        if (this.status === 204) {
+            this.rm('content-length')    // rfc 9110: no length on 204
+            return this.end()
+        }
+        if (data == null) {
             this.size = 0
             return this.end()
         }

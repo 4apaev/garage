@@ -199,6 +199,21 @@ describe('util', () => {
     })
 
     describe('Fail', () => {
+        // node --test ./test/util.spec.js
+        it('fail cause', async () => {
+            const a = new Fail(400)
+            const b = new Fail(409, a)
+            const c = new Fail(418, b)
+            const d = new Fail(451, c)
+
+            assrt.equal(a.cause, 400, 'default cause fallback should be error\'s code')
+            assrt.equal(b.cause, a)
+            assrt.equal(c.cause, b)
+            assrt.equal(d.cause, c)
+            assrt.equal(a, c.cause.cause)
+            assrt.equal(a, d.cause.cause.cause)
+        })
+
         it('creates and raises coded failures', async () => {
             const cause = new Error('root')
             const e  = Fail.of(418, 'teapot', cause)
@@ -261,4 +276,36 @@ describe('util', () => {
         })
     })
 
+})
+
+describe('util fixes', () => {
+    it('Fail keeps an error with its own cause as the direct cause', () => {
+        const inner = new Error('inner', { cause: 'root' })
+
+        assrt.equal(Fail.of(500, 'outer', inner).cause, inner)
+    })
+
+    it('Fail.from takes only integer codes and keeps the message', () => {
+        const fs = Object.assign(new Error('no such file'), { code: 'ENOENT' })
+        const db = Object.assign(new Error('busy'), { status: 503 })
+
+        assrt.equal(Fail.from(fs).code, 500)
+        assrt.equal(Fail.from(fs).message, 'no such file')
+        assrt.equal(Fail.from(db).code, 503)
+        assrt.equal(Fail.from('boom').message, 'boom')
+    })
+
+    it('A.of matches Array.of', () => {
+        assrt.deepEqual(Array.from(A.of(3)), [ 3 ])
+        assrt.equal(A.of(3) instanceof A, true)
+    })
+
+    it('A.where accepts a null query', () => {
+        assrt.deepEqual(Array.from(A.where([ null, 1, null ], null)), [ null, null ])
+    })
+
+    it('random covers the whole negative range', t => {
+        t.mock.method(random, 'valueOf', () => 0.01)
+        assrt.equal(random(-5, -1), -5)
+    })
 })

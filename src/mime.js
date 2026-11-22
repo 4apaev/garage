@@ -43,5 +43,5 @@ export function is(expected, actual) {
     const act = typeof actual == 'string'
         ? actual
         : fromHead(actual, '')
-    return !!act && exp.startsWith(act.replace(/[;,].*/, ''))
+    return !!act && exp === act.replace(/ *[;,].*/s, '').trim().toLowerCase()
 }

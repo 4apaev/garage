@@ -44,7 +44,8 @@ export default class Garage extends EventEmitter {
         if (rs.headersSent)
             return
 
-        rs.status = e.code
+        // fail codes can be any int, the status line can not
+        rs.status = e.code >= 400 && e.code < 600 ? e.code : 500
         rs.type = MIME.txt
         return rs.end(e.message)
     }

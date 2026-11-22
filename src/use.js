@@ -59,11 +59,23 @@ function createPathValidator(pttrs) {
 
         if (match) {
             for (const [ k, v ] of Object.entries(match.pathname.groups))
-                rq.params[ k ] = decodeURIComponent(v)
+                Is(v) && (rq.params[ k ] = decode(v))
             return true
         }
         return false
     })
+}
+
+/**
+ * @param  { string } v
+ */
+function decode(v) {
+    try {
+        return decodeURIComponent(v)
+    }
+    catch (e) {
+        throw Fail.of(400, 'malformed url param', e, decode)
+    }
 }
 
 /**
