@@ -53,6 +53,9 @@ export default class Garage extends EventEmitter {
     request = async (rq, rs) => {
         try {
             let r = await this.middleware(rq, rs)
+
+            // chain ended and nobody answered
+            rs.headersSent || rs.writableEnded || 'body' in rs || Fail.raise(404)
             return r
         }
         catch (e) {

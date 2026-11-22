@@ -4,6 +4,7 @@ import Os   from 'node:os'
 import Path from 'node:path'
 
 import { once } from 'node:events'
+import { Readable } from 'node:stream'
 
 import { describe, it } from 'node:test'
 import { deepEqual, equal, ok, throws } from 'node:assert/strict'
@@ -513,6 +514,57 @@ describe('garage fixes', () => {
 
             const none = await fetch(url + '/none')
             equal(none.headers.get('content-length'), '0')
+        }
+        finally {
+            await stop(app)
+        }
+    })
+})
+
+describe('garage 404', () => {
+    it('answers 404 when no route handles the request', async () => {
+        const app = new Garage
+        app.get('/x', (rq, rs) => rs.send(200, 'x'))
+
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/nothing', { signal: AbortSignal.timeout(2000) })
+            equal(res.status, 404)
+            equal(await res.text(), 'not found')
+            equal((await fetch(url + '/x')).status, 200)
+        }
+        finally {
+            await stop(app)
+        }
+    })
+
+    it('does not touch a response that is still streaming', async () => {
+        const app = new Garage
+        app.get('/slow', (rq, rs) => {
+            const body = new Readable({ read() {} })
+            rs.send(200, body)
+            setTimeout(() => body.push(null), 20, body.push('late'))
+        })
+
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/slow')
+            equal(res.status, 200)
+            equal(await res.text(), 'late')
+        }
+        finally {
+            await stop(app)
+        }
+    })
+
+    it('lets onerror shape the 404', async () => {
+        const app = new Garage({ onerror: (e, rq, rs) => rs.json(e.code, { error: e.message }) })
+
+        const url = await start(app)
+        try {
+            const res = await fetch(url + '/nope')
+            equal(res.status, 404)
+            deepEqual(await res.json(), { error: 'not found' })
         }
         finally {
             await stop(app)
